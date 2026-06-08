@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MKRA – Test Suite</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; padding: 16px; }
+  h1 { font-size: 22px; font-weight: 700; margin-bottom: 4px; color: #38bdf8; }
+  .subtitle { font-size: 13px; color: #94a3b8; margin-bottom: 20px; }
+  #run-btn {
+    background: #38bdf8; color: #0f172a; border: none; padding: 10px 28px;
+    border-radius: 8px; font-size: 15px; font-weight: 700; cursor: pointer;
+    margin-bottom: 20px;
+  }
+  #run-btn:hover { background: #7dd3fc; }
+  #run-btn:disabled { opacity: .5; cursor: not-allowed; }
+  #summary {
+    display: none; padding: 12px 16px; border-radius: 8px; font-weight: 700;
+    font-size: 15px; margin-bottom: 18px;
+  }
+  #summary.pass { background: #14532d; color: #86efac; }
+  #summary.fail { background: #7f1d1d; color: #fca5a5; }
+  .section-title {
+    font-size: 12px; font-weight: 700; letter-spacing: .08em;
+    color: #64748b; text-transform: uppercase; margin: 18px 0 6px;
+  }
+  .test-row {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 8px 12px; border-radius: 6px; margin-bottom: 4px;
+    background: #1e293b; font-size: 14px;
+  }
+  .test-row .icon { font-size: 16px; flex-shrink: 0; padding-top: 1px; }
+  .test-row .name { flex: 1; }
+  .test-row .err { font-size: 12px; color: #fca5a5; margin-top: 3px; }
+  .test-row.pass .name { color: #86efac; }
+  .test-row.fail .name { color: #fca5a5; }
+  .test-row.pending .name { color: #94a3b8; }
+</style>
+</head>
+<body>
+
+<h1>⚽ MKRA Prediction — Test Suite</h1>
+<p class="subtitle">Automated tests for scoring, standings, migration &amp; bracket logic</p>
+
+<button id="run-btn" onclick="runAll()">▶ Run All Tests</button>
+
+<div id="summary"></div>
+<div id="results"></div>
+
+<script>
+/* ══════════════════════════════════════════════
+   COPY OF CORE LOGIC FROM index.html
+   (no Firebase, no DOM — pure functions)
+══════════════════════════════════════════════ */
+
+const WIN_POINTS = 3, DRAW_POINTS = 1, KO_POINTS = 6;
+const GROUP_ORDER = ['A','B','C','D','E','F','G','H','I','J','K','L'];
+
+const NAME_ALIASES = {
+  'Korea Republic':'South Korea','United States':'USA',
+  'Türkiye':'Turkey','Bosnia and Herzegovina':'Bosnia & Herzegovina',
+  'Czechia':'Czech Republic'
+};
+function normalizeName(n) { return NAME_ALIASES[n] || n; }
+
+const FIXTURES = [
+  {id:'A1',group:'A',home:'Mexico',away:'South Africa'},
+  {id:'A2',group:'A',home:'South Korea',away:'Czech Republic'},
+  {id:'A3',group:'A',home:'Czech Republic',away:'South Africa'},
+  {id:'A4',group:'A',home:'Mexico',away:'South Korea'},
+  {id:'A5',group:'A',home:'Czech Republic',away:'Mexico'},
+  {id:'A6',group:'A',home:'South Africa',away:'South Korea'},
+  {id:'B1',group:'B',home:'Canada',away:'Bosnia & Herzegovina'},
+  {id:'B2',group:'B',home:'Qatar',away:'Switzerland'},
+  {id:'B3',group:'B',home:'Switzerland',away:'Bosnia & Herzegovina'},
+  {id:'B4',group:'B',home:'Canada',away:'Qatar'},
+  {id:'B5',group:'B',home:'Switzerland',away:'Canada'},
+  {id:'B6',group:'B',home:'Bosnia & Herzegovina',away:'Qatar'},
+  {id:'C1',group:'C',home:'Brazil',away:'Morocco'},
+  {id:'C2',group:'C',home:'Haiti',away:'Scotland'},
+  {id:'C3',group:'C',home:'Scotland',away:'Morocco'},
+  {id:'C4',group:'C',home:'Brazil',away:'Haiti'},
+  {id:'C5',group:'C',home:'Scotland',away:'Brazil'},
+  {id:'C6',group:'C',home:'Morocco',away:'Haiti'},
+  {id:'D1',group:'D',home:'USA',away:'Paraguay'},
+  {id:'D2',group:'D',home:'Australia',away:'Turkey'},
+  {id:'D3',group:'D',home:'USA',away:'Australia'},
+  {id:'D4',group:'D',home:'Turkey',away:'Paraguay'},
+  {id:'D5',group:'D',home:'Turkey',away:'USA'},
+  {id:'D6',group:'D',home:'Paraguay',away:'Australia'},
+  {id:'E1',group:'E',home:'Germany',away:'Curaçao'},
+  {id:'E2',group:'E',home:'Ivory Coast',away:'Ecuador'},
+  {id:'E3',group:'E',home:'Germany',away:'Ivory Coast'},
+  {id:'E4',group:'E',home:'Ecuador',away:'Curaçao'},
+  {id:'E5',group:'E',home:'Curaçao',away:'Ivory Coast'},
+  {id:'E6',group:'E',home:'Ecuador',away:'Germany'},
+  {id:'F1',group:'F',home:'Netherlands',away:'Japan'},
+  {id:'F2',group:'F',home:'Sweden',away:'Tunisia'},
+  {id:'F3',group:'F',home:'Netherlands',away:'Sweden'},
+  {id:'F4',group:'F',home:'Tunisia',away:'Japan'},
+  {id:'F5',group:'F',home:'Japan',away:'Sweden'},
+  {id:'F6',group:'F',home:'Tunisia',away:'Netherlands'},
+  {id:'G1',group:'G',home:'Belgium',away:'Egypt'},
+  {id:'G2',group:'G',home:'Iran',away:'New Zealand'},
+  {id:'G3',group:'G',home:'Belgium',away:'Iran'},
+  {id:'G4',group:'G',home:'New Zealand',away:'Egypt'},
+  {id:'G5',group:'G',home:'Egypt',away:'Iran'},
+  {id:'G6',group:'G',home:'New Zealand',away:'Belgium'},
+  {id:'H1',group:'H',home:'Spain',away:'Cape Verde'},
+  {id:'H2',group:'H',home:'Saudi Arabia',away:'Uruguay'},
+  {id:'H3',group:'H',home:'Spain',away:'Saudi Arabia'},
+  {id:'H4',group:'H',home:'Uruguay',away:'Cape Verde'},
+  {id:'H5',group:'H',home:'Cape Verde',away:'Saudi Arabia'},
+  {id:'H6',group:'H',home:'Uruguay',away:'Spain'},
+  {id:'I1',group:'I',home:'France',away:'Senegal'},
+  {id:'I2',group:'I',home:'Iraq',away:'Norway'},
+  {id:'I3',group:'I',home:'France',away:'Iraq'},
+  {id:'I4',group:'I',home:'Norway',away:'Senegal'},
+  {id:'I5',group:'I',home:'Norway',away:'France'},
+  {id:'I6',group:'I',home:'Senegal',away:'Iraq'},
+  {id:'J1',group:'J',home:'Argentina',away:'Algeria'},
+  {id:'J2',group:'J',home:'Austria',away:'Jordan'},
+  {id:'J3',group:'J',home:'Argentina',away:'Austria'},
+  {id:'J4',group:'J',home:'Jordan',away:'Algeria'},
+  {id:'J5',group:'J',home:'Jordan',away:'Argentina'},
+  {id:'J6',group:'J',home:'Algeria',away:'Austria'},
+  {id:'K1',group:'K',home:'Portugal',away:'DR Congo'},
+  {id:'K2',group:'K',home:'Uzbekistan',away:'Colombia'},
+  {id:'K3',group:'K',home:'Portugal',away:'Uzbekistan'},
+  {id:'K4',group:'K',home:'Colombia',away:'DR Congo'},
+  {id:'K5',group:'K',home:'Colombia',away:'Portugal'},
+  {id:'K6',group:'K',home:'DR Congo',away:'Uzbekistan'},
+  {id:'L1',group:'L',home:'England',away:'Croatia'},
+  {id:'L2',group:'L',home:'Ghana',away:'Panama'},
+  {id:'L3',group:'L',home:'England',away:'Ghana'},
+  {id:'L4',group:'L',home:'Panama',away:'Croatia'},
+  {id:'L5',group:'L',home:'Panama',away:'England'},
+  {id:'L6',group:'L',home:'Croatia',away:'Ghana'},
+];
+
+function migratePick(matchId, pick) {
+  if (!pick) return null;
+  if (pick === 'H' || pick === 'A' || pick === 'D') {
+    const f = FIXTURES.find(x => x.id === matchId);
+    if (!f) return null;
+    if (pick === 'H') return f.home;
+    if (pick === 'A') return f.away;
+    if (pick === 'D') return 'Draw';
+  }
+  return normalizeName(pick);
+}
+
+function migrateResults(raw) {
+  const out = {};
+  Object.entries(raw).forEach(([id, val]) => {
+    if (!val) return;
+    if (val === 'H' || val === 'A' || val === 'D') {
+      const f = FIXTURES.find(x => x.id === id);
+      if (!f) return;
+      out[id] = val === 'H' ? f.home : val === 'A' ? f.away : 'Draw';
+    } else {
+      out[id] = normalizeName(val);
+    }
+  });
+  return out;
+}
+
+/* computeGroupStandings with a local results object (not global S) */
+function computeStandings(results, allPicks) {
+  const standings = {};
+  GROUP_ORDER.forEach(g => {
+    standings[g] = {};
+    FIXTURES.filter(f => f.group === g).forEach(f => {
+      if (!standings[g][f.home]) standings[g][f.home] = {pts:0,w:0,d:0,l:0,played:0};
+      if (!standings[g][f.away]) standings[g][f.away] = {pts:0,w:0,d:0,l:0,played:0};
+    });
+  });
+  FIXTURES.forEach(f => {
+    let result = (results||{})[f.id];
+    if (!result && allPicks) result = migratePick(f.id, allPicks[f.id]);
+    if (!result) return;
+    const g = f.group;
+    standings[g][f.home].played++; standings[g][f.away].played++;
+    if (result === 'Draw') {
+      standings[g][f.home].pts += 1; standings[g][f.home].d++;
+      standings[g][f.away].pts += 1; standings[g][f.away].d++;
+    } else if (result === normalizeName(f.home)) {
+      standings[g][f.home].pts += 3; standings[g][f.home].w++;
+      standings[g][f.away].l++;
+    } else if (result === normalizeName(f.away)) {
+      standings[g][f.away].pts += 3; standings[g][f.away].w++;
+      standings[g][f.home].l++;
+    }
+  });
+  const sorted = {};
+  GROUP_ORDER.forEach(g => {
+    sorted[g] = Object.entries(standings[g])
+      .map(([team, s]) => ({team, ...s}))
+      .sort((a, b) => b.pts - a.pts || a.team.localeCompare(b.team));
+  });
+  return sorted;
+}
+
+function computeScore(picks, results, koResults) {
+  let pts = 0, correct = 0, total = 0;
+  Object.entries(picks).forEach(([id, rawPick]) => {
+    const pick = migratePick(id, rawPick);
+    if (!pick) return;
+    total++;
+    const r = (results||{})[id];
+    if (r && pick === r) { correct++; pts += (r === 'Draw' ? DRAW_POINTS : WIN_POINTS); }
+    const kr = (koResults||{})[id];
+    if (kr && pick === kr) { correct++; pts += KO_POINTS; }
+  });
+  return {pts, correct, total};
+}
+
+/* ══════════════════════════════════════════════
+   MINI TEST FRAMEWORK
+══════════════════════════════════════════════ */
+
+let sections = [];
+let currentSection = null;
+
+function describe(label, fn) {
+  currentSection = {label, tests:[]};
+  sections.push(currentSection);
+  fn();
+}
+
+function it(name, fn) {
+  currentSection.tests.push({name, fn, status:'pending', err:null});
+}
+
+function expect(val) {
+  return {
+    toBe(expected) {
+      if (val !== expected)
+        throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(val)}`);
+    },
+    toEqual(expected) {
+      if (JSON.stringify(val) !== JSON.stringify(expected))
+        throw new Error(`Expected ${JSON.stringify(expected)}, got ${JSON.stringify(val)}`);
+    },
+    toBeGreaterThan(n) {
+      if (!(val > n)) throw new Error(`Expected ${val} > ${n}`);
+    },
+    toHaveLength(n) {
+      if (val.length !== n) throw new Error(`Expected length ${n}, got ${val.length}`);
+    },
+    toBeTruthy() {
+      if (!val) throw new Error(`Expected truthy, got ${JSON.stringify(val)}`);
+    },
+    toBeNull() {
+      if (val !== null) throw new Error(`Expected null, got ${JSON.stringify(val)}`);
+    },
+    toContain(item) {
+      if (!val.includes(item)) throw new Error(`Expected array to contain ${JSON.stringify(item)}`);
+    },
+  };
+}
+
+/* ══════════════════════════════════════════════
+   TEST DEFINITIONS
+══════════════════════════════════════════════ */
+
+describe('Fixtures', () => {
+  it('Total fixtures = 72 (12 groups × 6 matches)', () => {
+    expect(FIXTURES.length).toBe(72);
+  });
+
+  it('All 12 groups have exactly 6 matches each', () => {
+    GROUP_ORDER.forEach(g => {
+      const count = FIXTURES.filter(f => f.group === g).length;
+      if (count !== 6) throw new Error(`Group ${g}: ${count} matches (expected 6)`);
+    });
+  });
+
+  it('Each group has exactly 4 teams', () => {
+    GROUP_ORDER.forEach(g => {
+      const teams = [...new Set(FIXTURES.filter(f=>f.group===g).flatMap(f=>[f.home,f.away]))];
+      if (teams.length !== 4) throw new Error(`Group ${g}: ${teams.length} teams (expected 4)`);
+    });
+  });
+
+  it('Each team plays exactly 3 matches per group', () => {
+    GROUP_ORDER.forEach(g => {
+      const gf = FIXTURES.filter(f=>f.group===g);
+      const teams = [...new Set(gf.flatMap(f=>[f.home,f.away]))];
+      teams.forEach(team => {
+        const count = gf.filter(f=>f.home===team||f.away===team).length;
+        if (count !== 3) throw new Error(`${team} in group ${g}: ${count} matches (expected 3)`);
+      });
+    });
+  });
+
+  it('No team plays itself', () => {
+    FIXTURES.forEach(f => {
+      if (f.home === f.away) throw new Error(`${f.id}: ${f.home} vs ${f.away}`);
+    });
+  });
+
+  it('No duplicate match IDs', () => {
+    const ids = FIXTURES.map(f=>f.id);
+    const unique = new Set(ids);
+    if (unique.size !== ids.length) throw new Error(`Duplicate match IDs found`);
+  });
+});
+
+describe('Name Normalization', () => {
+  it('Korea Republic → South Korea', () => {
+    expect(normalizeName('Korea Republic')).toBe('South Korea');
+  });
+  it('Türkiye → Turkey', () => {
+    expect(normalizeName('Türkiye')).toBe('Turkey');
+  });
+  it('Czechia → Czech Republic', () => {
+    expect(normalizeName('Czechia')).toBe('Czech Republic');
+  });
+  it('United States → USA', () => {
+    expect(normalizeName('United States')).toBe('USA');
+  });
+  it('France stays France (no alias)', () => {
+    expect(normalizeName('France')).toBe('France');
+  });
+});
+
+describe('Pick Migration (H/A/D → team names)', () => {
+  it('H → home team', () => {
+    expect(migratePick('A1', 'H')).toBe('Mexico');
+  });
+  it('A → away team', () => {
+    expect(migratePick('A1', 'A')).toBe('South Africa');
+  });
+  it('D → Draw', () => {
+    expect(migratePick('A1', 'D')).toBe('Draw');
+  });
+  it('Already a team name passes through', () => {
+    expect(migratePick('A1', 'Mexico')).toBe('Mexico');
+  });
+  it('null pick returns null', () => {
+    expect(migratePick('A1', null)).toBeNull();
+  });
+  it('Unknown match ID with H/A/D returns null', () => {
+    expect(migratePick('ZZZ', 'H')).toBeNull();
+  });
+});
+
+describe('Result Migration (batch)', () => {
+  it('Converts H/A/D batch to team names', () => {
+    const migrated = migrateResults({ A1:'H', A2:'D', A3:'A' });
+    expect(migrated['A1']).toBe('Mexico');
+    expect(migrated['A2']).toBe('Draw');
+    expect(migrated['A3']).toBe('South Africa');
+  });
+  it('Passes through already-correct team names', () => {
+    const migrated = migrateResults({ A1:'Mexico' });
+    expect(migrated['A1']).toBe('Mexico');
+  });
+  it('Applies name aliases during migration', () => {
+    const migrated = migrateResults({ A2:'Korea Republic' });
+    expect(migrated['A2']).toBe('South Korea');
+  });
+});
+
+describe('Group Standings', () => {
+  it('Mexico wins all 3 → 9 pts, tops Group A', () => {
+    const st = computeStandings({A1:'Mexico', A4:'Mexico', A5:'Mexico'});
+    const mexico = st['A'].find(t=>t.team==='Mexico');
+    expect(mexico.pts).toBe(9);
+    expect(st['A'][0].team).toBe('Mexico');
+  });
+
+  it('Draw gives 1 pt to each team', () => {
+    const st = computeStandings({A1:'Draw'});
+    const mx = st['A'].find(t=>t.team==='Mexico');
+    const sa = st['A'].find(t=>t.team==='South Africa');
+    expect(mx.pts).toBe(1);
+    expect(sa.pts).toBe(1);
+  });
+
+  it('Away win gives 3 pts to away team, 0 to home', () => {
+    const st = computeStandings({A1:'South Africa'});
+    const sa = st['A'].find(t=>t.team==='South Africa');
+    const mx = st['A'].find(t=>t.team==='Mexico');
+    expect(sa.pts).toBe(3);
+    expect(mx.pts).toBe(0);
+  });
+
+  it('Official results override player picks', () => {
+    const results = {A1:'South Africa'};
+    const picks   = {A1:'Mexico'};
+    const st = computeStandings(results, picks);
+    const sa = st['A'].find(t=>t.team==='South Africa');
+    expect(sa.pts).toBe(3);
+  });
+
+  it('Player picks fill in when no official result', () => {
+    const picks = {A1:'Mexico'};
+    const st = computeStandings({}, picks);
+    const mx = st['A'].find(t=>t.team==='Mexico');
+    expect(mx.pts).toBe(3);
+  });
+
+  it('All 6 group A matches produce correct winner when all won by home', () => {
+    const results = {A1:'Mexico',A2:'South Korea',A3:'Czech Republic',A4:'Mexico',A5:'Czech Republic',A6:'South Africa'};
+    const st = computeStandings(results);
+    // Mexico won 2 games (A1, A4) = 6pts; Czech Republic won 2 games (A3, A5) = 6pts; etc.
+    const mx = st['A'].find(t=>t.team==='Mexico');
+    expect(mx.pts).toBe(6);
+    expect(mx.w).toBe(2);
+  });
+
+  it('played count is correct', () => {
+    const results = {A1:'Mexico', A2:'Draw'};
+    const st = computeStandings(results);
+    const mx = st['A'].find(t=>t.team==='Mexico');
+    expect(mx.played).toBe(1); // only A1
+    const sk = st['A'].find(t=>t.team==='South Korea');
+    expect(sk.played).toBe(1); // only A2
+  });
+});
+
+describe('Scoring', () => {
+  it('Correct home win = 3 points', () => {
+    const {pts} = computeScore({A1:'Mexico'}, {A1:'Mexico'}, {});
+    expect(pts).toBe(3);
+  });
+
+  it('Correct draw = 1 point', () => {
+    const {pts} = computeScore({A1:'Draw'}, {A1:'Draw'}, {});
+    expect(pts).toBe(1);
+  });
+
+  it('Wrong pick = 0 points', () => {
+    const {pts} = computeScore({A1:'Mexico'}, {A1:'South Africa'}, {});
+    expect(pts).toBe(0);
+  });
+
+  it('Correct knockout pick = 6 points', () => {
+    const {pts} = computeScore({M74:'Germany'}, {}, {M74:'Germany'});
+    expect(pts).toBe(6);
+  });
+
+  it('Multiple correct picks accumulate correctly', () => {
+    const picks = {A1:'Mexico', A2:'Draw', M74:'Germany'};
+    const results = {A1:'Mexico', A2:'Draw'};
+    const koResults = {M74:'Germany'};
+    const {pts, correct} = computeScore(picks, results, koResults);
+    expect(pts).toBe(10);   // 3 + 1 + 6
+    expect(correct).toBe(3);
+  });
+
+  it('Old H/A/D picks score correctly against team name results', () => {
+    // Pick 'H' for A1 = Mexico; result is 'Mexico' → 3pts
+    const {pts} = computeScore({A1:'H'}, {A1:'Mexico'}, {});
+    expect(pts).toBe(3);
+  });
+
+  it('Mix of correct and wrong picks', () => {
+    const picks = {A1:'Mexico', A2:'Draw', A3:'Scotland'};
+    const results = {A1:'Mexico', A2:'Czech Republic', A3:'Scotland'};
+    const {pts, correct} = computeScore(picks, results, {});
+    expect(correct).toBe(2);
+    expect(pts).toBe(3 + 3); // A1 correct (win, 3pts), A2 wrong, A3 correct (win, 3pts)
+  });
+
+  it('Score 0 when no results entered', () => {
+    const {pts} = computeScore({A1:'Mexico',A2:'Draw'}, {}, {});
+    expect(pts).toBe(0);
+  });
+});
+
+describe('3rd-place Selection', () => {
+  it('12 groups available to choose from', () => {
+    expect(GROUP_ORDER.length).toBe(12);
+  });
+
+  it('Can select exactly 8 groups', () => {
+    const sel = new Set();
+    GROUP_ORDER.slice(0, 8).forEach(g => sel.add(g));
+    expect(sel.size).toBe(8);
+  });
+
+  it('Adding 9th when 8 already selected — should be blocked', () => {
+    const sel = new Set(GROUP_ORDER.slice(0, 8));
+    const blocked = sel.size >= 8;
+    expect(blocked).toBe(true);
+  });
+
+  it('Removing a selection reduces count', () => {
+    const sel = new Set(GROUP_ORDER.slice(0, 8));
+    sel.delete('A');
+    expect(sel.size).toBe(7);
+  });
+
+  it('Group letters are unique', () => {
+    const unique = new Set(GROUP_ORDER);
+    expect(unique.size).toBe(GROUP_ORDER.length);
+  });
+});
+
+describe('Leaderboard', () => {
+  it('Player with all correct wins beats player with no picks', () => {
+    const allWins = {};
+    FIXTURES.slice(0,6).forEach(f => allWins[f.id] = f.home);
+    const results = {};
+    FIXTURES.slice(0,6).forEach(f => results[f.id] = f.home);
+    const {pts:pts1} = computeScore(allWins, results, {});
+    const {pts:pts2} = computeScore({}, results, {});
+    expect(pts1).toBeGreaterThan(pts2);
+  });
+
+  it('Two players with same correct picks have same score', () => {
+    const picks = {A1:'Mexico', A2:'Draw'};
+    const results = {A1:'Mexico', A2:'Draw'};
+    const {pts:pts1} = computeScore(picks, results, {});
+    const {pts:pts2} = computeScore(picks, results, {});
+    expect(pts1).toBe(pts2);
+  });
+
+  it('KO correct pick scores 6 (more than any group pick)', () => {
+    const {pts:koPts} = computeScore({M74:'Germany'}, {}, {M74:'Germany'});
+    const {pts:winPts} = computeScore({A1:'Mexico'}, {A1:'Mexico'}, {});
+    expect(koPts).toBeGreaterThan(winPts);
+  });
+});
+
+/* ══════════════════════════════════════════════
+   RUNNER + RENDERER
+══════════════════════════════════════════════ */
+
+function runAll() {
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+  btn.textContent = '⏳ Running…';
+
+  let totalPass = 0, totalFail = 0;
+
+  sections.forEach(sec => {
+    sec.tests.forEach(t => {
+      try {
+        t.fn();
+        t.status = 'pass'; t.err = null; totalPass++;
+      } catch(e) {
+        t.status = 'fail'; t.err = e.message; totalFail++;
+      }
+    });
+  });
+
+  // Render results
+  const container = document.getElementById('results');
+  container.innerHTML = '';
+  sections.forEach(sec => {
+    const title = document.createElement('div');
+    title.className = 'section-title';
+    title.textContent = sec.label;
+    container.appendChild(title);
+
+    sec.tests.forEach(t => {
+      const row = document.createElement('div');
+      row.className = `test-row ${t.status}`;
+      row.innerHTML = `
+        <span class="icon">${t.status === 'pass' ? '✅' : '❌'}</span>
+        <div>
+          <div class="name">${t.name}</div>
+          ${t.err ? `<div class="err">${t.err}</div>` : ''}
+        </div>`;
+      container.appendChild(row);
+    });
+  });
+
+  // Summary banner
+  const summary = document.getElementById('summary');
+  summary.style.display = 'block';
+  if (totalFail === 0) {
+    summary.className = 'pass';
+    summary.textContent = `🎉 All ${totalPass} tests passed`;
+  } else {
+    summary.className = 'fail';
+    summary.textContent = `❌ ${totalFail} failed · ${totalPass} passed · ${totalPass+totalFail} total`;
+  }
+
+  btn.disabled = false;
+  btn.textContent = '▶ Run All Tests';
+}
+</script>
+</body>
+</html>

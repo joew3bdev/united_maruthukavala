@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>MKRA Admin Panel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+<script type="module">
+/* ================================================================
+   FIREBASE CONFIG  (keep in sync with index.html)
+================================================================ */
+const FIREBASE_CONFIG = {
+  apiKey:            "AIzaSyBs6SRjp5rEB3Y-D8n9IH6UpyaysRvzSnI",
+  authDomain:        "mkra-fc.firebaseapp.com",
+  projectId:         "mkra-fc",
+  storageBucket:     "mkra-fc.firebasestorage.app",
+  messagingSenderId: "512040009253",
+  appId:             "1:512040009253:web:ead0edecaf31d366b8c9cc"
+};
+const ADMIN_PASSWORD = "village2026";
+/* ================================================================ */
+
+import { initializeApp }     from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getFirestore,
+  doc, getDoc, setDoc, updateDoc, deleteDoc,
+  collection, getDocs, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+const app = initializeApp(FIREBASE_CONFIG);
+const db  = getFirestore(app);
+
+/* ── Fixtures ────────────────────────────────────────────────── */
+const FIXTURES = [
+  {id:'A1',group:'A',home:'Mexico',       away:'South Africa',  kickoff:'2026-06-11T21:00:00Z'},
+  {id:'A2',group:'A',home:'South Korea',  away:'Czech Republic',kickoff:'2026-06-12T01:00:00Z'},
+  {id:'A3',group:'A',home:'Mexico',       away:'Czech Republic',kickoff:'2026-06-15T21:00:00Z'},
+  {id:'A4',group:'A',home:'South Africa', away:'South Korea',   kickoff:'2026-06-16T01:00:00Z'},
+  {id:'A5',group:'A',home:'Mexico',       away:'South Korea',   kickoff:'2026-06-19T21:00:00Z'},
+  {id:'A6',group:'A',home:'Czech Republic',away:'South Africa', kickoff:'2026-06-19T21:00:00Z'},
+  {id:'B1',group:'B',home:'Canada',       away:'Bosnia & Herzegovina',kickoff:'2026-06-12T17:00:00Z'},
+  {id:'B2',group:'B',home:'Qatar',        away:'Switzerland',   kickoff:'2026-06-12T21:00:00Z'},
+  {id:'B3',group:'B',home:'Canada',       away:'Switzerland',   kickoff:'2026-06-16T17:00:00Z'},
+  {id:'B4',group:'B',home:'Qatar',        away:'Bosnia & Herzegovina',kickoff:'2026-06-16T21:00:00Z'},
+  {id:'B5',group:'B',home:'Canada',       away:'Qatar',         kickoff:'2026-06-20T17:00:00Z'},
+  {id:'B6',group:'B',home:'Bosnia & Herzegovina',away:'Switzerland',kickoff:'2026-06-20T17:00:00Z'},
+  {id:'C1',group:'C',home:'Brazil',       away:'Morocco',       kickoff:'2026-06-13T01:00:00Z'},
+  {id:'C2',group:'C',home:'Haiti',        away:'Scotland',      kickoff:'2026-06-13T17:00:00Z'},
+  {id:'C3',group:'C',home:'Brazil',       away:'Scotland',      kickoff:'2026-06-17T01:00:00Z'},
+  {id:'C4',group:'C',home:'Morocco',      away:'Haiti',         kickoff:'2026-06-17T17:00:00Z'},
+  {id:'C5',group:'C',home:'Brazil',       away:'Haiti',         kickoff:'2026-06-21T01:00:00Z'},
+  {id:'C6',group:'C',home:'Scotland',     away:'Morocco',       kickoff:'2026-06-21T01:00:00Z'},
+  {id:'D1',group:'D',home:'USA',          away:'Paraguay',      kickoff:'2026-06-13T21:00:00Z'},
+  {id:'D2',group:'D',home:'Australia',    away:'Turkey',        kickoff:'2026-06-14T01:00:00Z'},
+  {id:'D3',group:'D',home:'USA',          away:'Turkey',        kickoff:'2026-06-17T21:00:00Z'},
+  {id:'D4',group:'D',home:'Paraguay',     away:'Australia',     kickoff:'2026-06-18T01:00:00Z'},
+  {id:'D5',group:'D',home:'USA',          away:'Australia',     kickoff:'2026-06-21T21:00:00Z'},
+  {id:'D6',group:'D',home:'Turkey',       away:'Paraguay',      kickoff:'2026-06-21T21:00:00Z'},
+  {id:'E1',group:'E',home:'Germany',      away:'Curaçao',       kickoff:'2026-06-14T17:00:00Z'},
+  {id:'E2',group:'E',home:'Ivory Coast',  away:'Ecuador',       kickoff:'2026-06-14T21:00:00Z'},
+  {id:'E3',group:'E',home:'Germany',      away:'Ecuador',       kickoff:'2026-06-18T17:00:00Z'},
+  {id:'E4',group:'E',home:'Ivory Coast',  away:'Curaçao',       kickoff:'2026-06-18T21:00:00Z'},
+  {id:'E5',group:'E',home:'Germany',      away:'Ivory Coast',   kickoff:'2026-06-22T17:00:00Z'},
+  {id:'E6',group:'E',home:'Ecuador',      away:'Curaçao',       kickoff:'2026-06-22T17:00:00Z'},
+  {id:'F1',group:'F',home:'Netherlands',  away:'Japan',         kickoff:'2026-06-14T21:00:00Z'},
+  {id:'F2',group:'F',home:'Sweden',       away:'Tunisia',       kickoff:'2026-06-15T01:00:00Z'},
+  {id:'F3',group:'F',home:'Netherlands',  away:'Tunisia',       kickoff:'2026-06-18T21:00:00Z'},
+  {id:'F4',group:'F',home:'Japan',        away:'Sweden',        kickoff:'2026-06-19T01:00:00Z'},
+  {id:'F5',group:'F',home:'Netherlands',  away:'Sweden',        kickoff:'2026-06-22T21:00:00Z'},
+  {id:'F6',group:'F',home:'Tunisia',      away:'Japan',         kickoff:'2026-06-22T21:00:00Z'},
+  {id:'G1',group:'G',home:'Belgium',      away:'Egypt',         kickoff:'2026-06-15T17:00:00Z'},
+  {id:'G2',group:'G',home:'Iran',         away:'New Zealand',   kickoff:'2026-06-15T21:00:00Z'},
+  {id:'G3',group:'G',home:'Belgium',      away:'New Zealand',   kickoff:'2026-06-19T17:00:00Z'},
+  {id:'G4',group:'G',home:'Iran',         away:'Egypt',         kickoff:'2026-06-19T21:00:00Z'},
+  {id:'G5',group:'G',home:'Belgium',      away:'Iran',          kickoff:'2026-06-23T17:00:00Z'},
+  {id:'G6',group:'G',home:'New Zealand',  away:'Egypt',         kickoff:'2026-06-23T17:00:00Z'},
+  {id:'H1',group:'H',home:'Spain',        away:'Cape Verde',    kickoff:'2026-06-15T21:00:00Z'},
+  {id:'H2',group:'H',home:'Saudi Arabia', away:'Uruguay',       kickoff:'2026-06-16T01:00:00Z'},
+  {id:'H3',group:'H',home:'Spain',        away:'Uruguay',       kickoff:'2026-06-19T21:00:00Z'},
+  {id:'H4',group:'H',home:'Saudi Arabia', away:'Cape Verde',    kickoff:'2026-06-20T01:00:00Z'},
+  {id:'H5',group:'H',home:'Spain',        away:'Saudi Arabia',  kickoff:'2026-06-23T21:00:00Z'},
+  {id:'H6',group:'H',home:'Uruguay',      away:'Cape Verde',    kickoff:'2026-06-23T21:00:00Z'},
+  {id:'I1',group:'I',home:'France',       away:'Senegal',       kickoff:'2026-06-16T17:00:00Z'},
+  {id:'I2',group:'I',home:'Iraq',         away:'Norway',        kickoff:'2026-06-16T21:00:00Z'},
+  {id:'I3',group:'I',home:'France',       away:'Norway',        kickoff:'2026-06-20T17:00:00Z'},
+  {id:'I4',group:'I',home:'Iraq',         away:'Senegal',       kickoff:'2026-06-20T21:00:00Z'},
+  {id:'I5',group:'I',home:'France',       away:'Iraq',          kickoff:'2026-06-24T17:00:00Z'},
+  {id:'I6',group:'I',home:'Norway',       away:'Senegal',       kickoff:'2026-06-24T17:00:00Z'},
+  {id:'J1',group:'J',home:'Argentina',    away:'Algeria',       kickoff:'2026-06-16T21:00:00Z'},
+  {id:'J2',group:'J',home:'Austria',      away:'Jordan',        kickoff:'2026-06-17T01:00:00Z'},
+  {id:'J3',group:'J',home:'Argentina',    away:'Jordan',        kickoff:'2026-06-20T21:00:00Z'},
+  {id:'J4',group:'J',home:'Algeria',      away:'Austria',       kickoff:'2026-06-21T01:00:00Z'},
+  {id:'J5',group:'J',home:'Argentina',    away:'Austria',       kickoff:'2026-06-24T21:00:00Z'},
+  {id:'J6',group:'J',home:'Jordan',       away:'Algeria',       kickoff:'2026-06-24T21:00:00Z'},
+  {id:'K1',group:'K',home:'Portugal',     away:'DR Congo',      kickoff:'2026-06-17T17:00:00Z'},
+  {id:'K2',group:'K',home:'Uzbekistan',   away:'Colombia',      kickoff:'2026-06-17T21:00:00Z'},
+  {id:'K3',group:'K',home:'Portugal',     away:'Colombia',      kickoff:'2026-06-21T17:00:00Z'},
+  {id:'K4',group:'K',home:'Uzbekistan',   away:'DR Congo',      kickoff:'2026-06-21T21:00:00Z'},
+  {id:'K5',group:'K',home:'Portugal',     away:'Uzbekistan',    kickoff:'2026-06-25T17:00:00Z'},
+  {id:'K6',group:'K',home:'Colombia',     away:'DR Congo',      kickoff:'2026-06-25T17:00:00Z'},
+  {id:'L1',group:'L',home:'England',      away:'Croatia',       kickoff:'2026-06-17T21:00:00Z'},
+  {id:'L2',group:'L',home:'Ghana',        away:'Panama',        kickoff:'2026-06-18T01:00:00Z'},
+  {id:'L3',group:'L',home:'England',      away:'Ghana',         kickoff:'2026-06-22T21:00:00Z'},
+  {id:'L4',group:'L',home:'Croatia',      away:'Panama',        kickoff:'2026-06-23T01:00:00Z'},
+  {id:'L5',group:'L',home:'Panama',       away:'England',       kickoff:'2026-06-27T21:00:00Z'},
+  {id:'L6',group:'L',home:'Croatia',      away:'Ghana',         kickoff:'2026-06-27T21:00:00Z'}
+];
+const GROUP_ORDER = ['A','B','C','D','E','F','G','H','I','J','K','L'];
+
+const BRACKET = [
+  {id:'M73', round:'R32', slot1:'2A',  slot2:'2B',             kickoff:'2026-06-28T19:00:00Z', venue:'Los Angeles'},
+  {id:'M74', round:'R32', slot1:'1E',  slot2:'3rd(A/B/C/D/F)', kickoff:'2026-06-29T20:30:00Z', venue:'Boston'},
+  {id:'M75', round:'R32', slot1:'1F',  slot2:'2C',             kickoff:'2026-06-30T01:00:00Z', venue:'Monterrey'},
+  {id:'M76', round:'R32', slot1:'1C',  slot2:'2F',             kickoff:'2026-06-29T17:00:00Z', venue:'Houston'},
+  {id:'M77', round:'R32', slot1:'1I',  slot2:'3rd(C/D/F/G/H)', kickoff:'2026-06-30T21:00:00Z', venue:'New York'},
+  {id:'M78', round:'R32', slot1:'2E',  slot2:'2I',             kickoff:'2026-06-30T17:00:00Z', venue:'Dallas'},
+  {id:'M79', round:'R32', slot1:'1A',  slot2:'3rd(C/E/F/H/I)', kickoff:'2026-07-01T01:00:00Z', venue:'Mexico City'},
+  {id:'M80', round:'R32', slot1:'1L',  slot2:'3rd(E/H/I/J/K)', kickoff:'2026-07-01T16:00:00Z', venue:'Atlanta'},
+  {id:'M81', round:'R32', slot1:'1D',  slot2:'3rd(B/E/F/I/J)', kickoff:'2026-07-02T00:00:00Z', venue:'San Francisco'},
+  {id:'M82', round:'R32', slot1:'1G',  slot2:'3rd(A/E/H/I/J)', kickoff:'2026-07-01T20:00:00Z', venue:'Seattle'},
+  {id:'M83', round:'R32', slot1:'2K',  slot2:'2L',             kickoff:'2026-07-02T23:00:00Z', venue:'Toronto'},
+  {id:'M84', round:'R32', slot1:'1H',  slot2:'2J',             kickoff:'2026-07-02T19:00:00Z', venue:'Los Angeles'},
+  {id:'M85', round:'R32', slot1:'1B',  slot2:'3rd(E/F/G/I/J)', kickoff:'2026-07-03T03:00:00Z', venue:'Vancouver'},
+  {id:'M86', round:'R32', slot1:'1J',  slot2:'2H',             kickoff:'2026-07-03T22:00:00Z', venue:'Miami'},
+  {id:'M87', round:'R32', slot1:'1K',  slot2:'3rd(D/E/I/J/L)', kickoff:'2026-07-04T01:30:00Z', venue:'Kansas City'},
+  {id:'M88', round:'R32', slot1:'2D',  slot2:'2G',             kickoff:'2026-07-03T18:00:00Z', venue:'Dallas'},
+  {id:'M89', round:'R16', feeds:['M74','M77'], kickoff:'2026-07-04T21:00:00Z', venue:'Philadelphia'},
+  {id:'M90', round:'R16', feeds:['M73','M75'], kickoff:'2026-07-04T17:00:00Z', venue:'Houston'},
+  {id:'M91', round:'R16', feeds:['M76','M78'], kickoff:'2026-07-05T20:00:00Z', venue:'New York'},
+  {id:'M92', round:'R16', feeds:['M79','M80'], kickoff:'2026-07-06T00:00:00Z', venue:'Mexico City'},
+  {id:'M93', round:'R16', feeds:['M83','M84'], kickoff:'2026-07-06T19:00:00Z', venue:'Dallas'},
+  {id:'M94', round:'R16', feeds:['M81','M82'], kickoff:'2026-07-07T00:00:00Z', venue:'Seattle'},
+  {id:'M95', round:'R16', feeds:['M86','M88'], kickoff:'2026-07-07T16:00:00Z', venue:'Atlanta'},
+  {id:'M96', round:'R16', feeds:['M85','M87'], kickoff:'2026-07-07T20:00:00Z', venue:'Vancouver'},
+  {id:'M97',  round:'QF', feeds:['M89','M90'], kickoff:'2026-07-09T20:00:00Z', venue:'Boston'},
+  {id:'M98',  round:'QF', feeds:['M93','M94'], kickoff:'2026-07-10T19:00:00Z', venue:'Los Angeles'},
+  {id:'M99',  round:'QF', feeds:['M91','M92'], kickoff:'2026-07-11T21:00:00Z', venue:'Miami'},
+  {id:'M100', round:'QF', feeds:['M95','M96'], kickoff:'2026-07-12T01:00:00Z', venue:'Kansas City'},
+  {id:'M101', round:'SF', feeds:['M97','M98'],  kickoff:'2026-07-14T19:00:00Z', venue:'Dallas'},
+  {id:'M102', round:'SF', feeds:['M99','M100'], kickoff:'2026-07-15T19:00:00Z', venue:'Atlanta'},
+  {id:'BRONZE', round:'BRONZE', feedsLosers:['M101','M102'], kickoff:'2026-07-18T21:00:00Z', venue:'Miami'},
+  {id:'FINAL',  round:'FINAL',  feeds:['M101','M102'],       kickoff:'2026-07-19T19:00:00Z', venue:'New York'},
+];
+const KO_ROUND_ORDER  = ['R32','R16','QF','SF','BRONZE','FINAL'];
+const KO_ROUND_LABELS = {
+  R32:'Round of 32', R16:'Round of 16', QF:'Quarter-final',
+  SF:'Semi-final', BRONZE:'Third Place', FINAL:'The Final'
+};
+
+const FLAGS = {
+  'Mexico':'🇲🇽','South Africa':'🇿🇦','South Korea':'🇰🇷','Czech Republic':'🇨🇿',
+  'Canada':'🇨🇦','Bosnia & Herzegovina':'🇧🇦','Qatar':'🇶🇦','Switzerland':'🇨🇭',
+  'Brazil':'🇧🇷','Morocco':'🇲🇦','Haiti':'🇭🇹','Scotland':'🏴󠁧󠁢󠁳󠁣󠁴󠁿',
+  'USA':'🇺🇸','Paraguay':'🇵🇾','Australia':'🇦🇺','Turkey':'🇹🇷',
+  'Germany':'🇩🇪','Curaçao':'🇨🇼','Ivory Coast':'🇨🇮','Ecuador':'🇪🇨',
+  'Netherlands':'🇳🇱','Japan':'🇯🇵','Sweden':'🇸🇪','Tunisia':'🇹🇳',
+  'Belgium':'🇧🇪','Egypt':'🇪🇬','Iran':'🇮🇷','New Zealand':'🇳🇿',
+  'Spain':'🇪🇸','Cape Verde':'🇨🇻','Saudi Arabia':'🇸🇦','Uruguay':'🇺🇾',
+  'France':'🇫🇷','Senegal':'🇸🇳','Iraq':'🇮🇶','Norway':'🇳🇴',
+  'Argentina':'🇦🇷','Algeria':'🇩🇿','Austria':'🇦🇹','Jordan':'🇯🇴',
+  'Portugal':'🇵🇹','DR Congo':'🇨🇩','Uzbekistan':'🇺🇿','Colombia':'🇨🇴',
+  'England':'🏴󠁧󠁢󠁥󠁮󠁧󠁿','Croatia':'🇭🇷','Ghana':'🇬🇭','Panama':'🇵🇦'
+};
+const flag = t => FLAGS[t] || '🏳';
+
+/* ── State ───────────────────────────────────────────────────── */
+const S = {
+  results: {},
+  koR32Teams: {},
+  koResults: {},
+  koThirdQualifiers: [],   // 8 selected group letters e.g. ['A','C','E',...]
+  entriesClosed: false,
+  koEntriesClosed: false,
+  contestName: "MKRA WC '26",
+  adminTab: 'groups',
+};
+
+/* ── Helpers ─────────────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+function fmtDate(iso) {
+  return new Date(iso).toLocaleString(undefined, {
+    weekday:'short', month:'short', day:'numeric', hour:'numeric', minute:'2-digit'
+  });
+}
+function fmtDateShort(iso) {
+  if (!iso) return '—';
+  const d = iso.toDate ? iso.toDate() : new Date(iso);
+  return d.toLocaleString(undefined, {
+    day:'numeric', month:'short', hour:'numeric', minute:'2-digit'
+  });
+}
+function timeAgo(iso) {
+  if (!iso) return '—';
+  const d = iso.toDate ? iso.toDate() : new Date(iso);
+  const diff = Date.now() - d.getTime();
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return `${Math.floor(diff/60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff/3600000)}h ago`;
+  return `${Math.floor(diff/86400000)}d ago`;
+}
+
+let toastTimer;
+function toast(msg, bad=false) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.className = 'toast show' + (bad?' bad':'');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove("show"), 2800);
+}
+
+const NAME_ALIASES = {
+  'Korea Republic':'South Korea','United States':'USA',
+  'Türkiye':'Turkey','Bosnia and Herzegovina':'Bosnia & Herzegovina',
+  'Czechia':'Czech Republic'
+};
+function normalizeName(n) { return NAME_ALIASES[n] || n; }
+function migrateResults(raw) {
+  const out = {};
+  Object.entries(raw).forEach(([id, val]) => {
+    if (!val) return;
+    if (val === 'H' || val === 'A' || val === 'D') {
+      const f = FIXTURES.find(x => x.id === id);
+      if (!f) return;
+      out[id] = val === 'H' ? f.home : val === 'A' ? f.away : 'Draw';
+    } else {
+      out[id] = normalizeName(val);
+    }
+  });
+  return out;
+}
+
+function computeGroupStandings() {
+  const standings = {};
+  GROUP_ORDER.forEach(g => {
+    standings[g] = {};
+    FIXTURES.filter(f=>f.group===g).forEach(f=>{
+      if(!standings[g][f.home]) standings[g][f.home]={pts:0,w:0,d:0,l:0,played:0};
+      if(!standings[g][f.away]) standings[g][f.away]={pts:0,w:0,d:0,l:0,played:0};
+    });
+  });
+  Object.entries(S.results).forEach(([id,result])=>{
+    const f=FIXTURES.find(x=>x.id===id); if(!f) return;
+    const g=f.group;
+    standings[g][f.home].played++; standings[g][f.away].played++;
+    if(result==='Draw'){
+      standings[g][f.home].pts+=1; standings[g][f.home].d++;
+      standings[g][f.away].pts+=1; standings[g][f.away].d++;
+    } else if(result===normalizeName(f.home)){
+      standings[g][f.home].pts+=3; standings[g][f.home].w++;
+      standings[g][f.away].l++;
+    } else if(result===normalizeName(f.away)){
+      standings[g][f.away].pts+=3; standings[g][f.away].w++;
+      standings[g][f.home].l++;
+    }
+  });
+  const sorted = {};
+  GROUP_ORDER.forEach(g=>{
+    sorted[g]=Object.entries(standings[g])
+      .map(([team,stats])=>({team,...stats}))
+      .sort((a,b)=>b.pts-a.pts||a.team.localeCompare(b.team));
+  });
+  return sorted;
+}
+
+function getTeamForSlot(slot, standings) {
+  const m1 = slot.match(/^([12])([A-L])$/);
+  if (m1) {
+    const pos = parseInt(m1[1]) - 1, grp = m1[2];
+    return standings[grp]?.[pos]?.team || null;
+  }
+  const m3 = slot.match(/^3rd\(([A-L/]+)\)$/);
+  if (m3) {
+    const thirds = m3[1].split('/').map(g => standings[g]?.[2]).filter(Boolean);
+    thirds.sort((a,b) => b.pts - a.pts || a.team.localeCompare(b.team));
+    return thirds[0]?.team || null;
+  }
+  return null;
+}
+
+function getKoTeams(matchId, allPicks={}) {
+  const match = BRACKET.find(m=>m.id===matchId);
+  if (!match) return null;
+  if (match.round === 'R32') {
+    const t = S.koR32Teams[matchId];
+    if (t?.home && t?.away) return {home:t.home, away:t.away};
+    return null;
+  }
+  if (match.feedsLosers) {
+    const teams = match.feedsLosers.map(feedId => {
+      const sfTeams = getKoTeams(feedId, allPicks);
+      if (!sfTeams) return null;
+      const sfWinner = S.koResults[feedId] || allPicks[feedId];
+      if (!sfWinner) return null;
+      return sfWinner === sfTeams.home ? sfTeams.away : sfTeams.home;
+    });
+    return teams.some(t=>!t) ? null : {home:teams[0], away:teams[1]};
+  }
+  const teams = match.feeds.map(feedId => S.koResults[feedId] || null);
+  return teams.some(t=>!t) ? null : {home:teams[0], away:teams[1]};
+}
+
+/* ── Settings writer — always writes clean known fields from S ── */
+async function writeSettingsDoc() {
+  await setDoc(doc(db,'settings','main'), {
+    entries_closed:       S.entriesClosed,
+    ko_entries_closed:    S.koEntriesClosed,
+    contest_name:         S.contestName,
+    results:              {...S.results},
+    ko_r32_teams:         {...S.koR32Teams},
+    ko_results:           {...S.koResults},
+    ko_third_qualifiers:  [...S.koThirdQualifiers]
+  });
+}
+
+/* ── Boot ────────────────────────────────────────────────────── */
+async function boot() {
+  try {
+    const ref = doc(db,'settings','main');
+    const snap = await getDoc(ref);
+    if (snap.exists()) {
+      const d = snap.data();
+      S.entriesClosed   = d.entries_closed    || false;
+      S.koEntriesClosed = d.ko_entries_closed || false;
+      S.contestName     = d.contest_name      || S.contestName;
+      S.results             = migrateResults(d.results || {});
+      S.koR32Teams          = d.ko_r32_teams         || {};
+      S.koResults           = d.ko_results           || {};
+      S.koThirdQualifiers   = d.ko_third_qualifiers  || [];
+
+      // ── One-time migration: old setDoc+merge stored flat dotted keys
+      //    e.g. {"results.A1": "Mexico"} instead of {results: {A1: "Mexico"}}
+      let needsMigration = false;
+      Object.entries(d).forEach(([k, v]) => {
+        if (k.startsWith('results.')) {
+          const id = k.slice('results.'.length);
+          S.results[id] = S.results[id] || v;
+          needsMigration = true;
+        } else if (k.startsWith('ko_results.')) {
+          const id = k.slice('ko_results.'.length);
+          S.koResults[id] = S.koResults[id] || v;
+          needsMigration = true;
+        } else if (k.startsWith('ko_r32_teams.')) {
+          const id = k.slice('ko_r32_teams.'.length);
+          S.koR32Teams[id] = S.koR32Teams[id] || v;
+          needsMigration = true;
+        }
+      });
+      if (needsMigration) {
+        console.log("Migrating flat dotted-key results to nested format…");
+        await writeSettingsDoc();
+        console.log("Migration done.");
+      }
+    }
+  } catch(e) { console.error("Boot error:", e); }
+}
+
+/* ── Login ───────────────────────────────────────────────────── */
+async function showPanel() {
+  await boot();
+  $("login-section").classList.add("hidden");
+  $("panel-section").classList.remove("hidden");
+  $("admin-contest-name").value = S.contestName;
+  renderEntryToggles();
+  switchTab('groups');
+}
+
+window.adminLogin = async function() {
+  const pw = $("admin-pw").value;
+  $("admin-err").textContent = "";
+  if (pw !== ADMIN_PASSWORD) { $("admin-err").textContent = "Wrong password."; return; }
+  sessionStorage.setItem('adminAuth', ADMIN_PASSWORD);
+  await showPanel();
+};
+
+window.adminLogout = function() {
+  sessionStorage.removeItem('adminAuth');
+  location.reload();
+};
+
+/* ── Tab switching ───────────────────────────────────────────── */
+const TABS = ['groups','knockout','players','leaderboard'];
+window.switchTab = function(tab) {
+  S.adminTab = tab;
+  TABS.forEach(t => {
+    $(`tab-${t}`)?.classList.toggle('on', t===tab);
+    $(`section-${t}`)?.classList.toggle('hidden', t!==tab);
+  });
+  if (tab==='groups')      renderGroupResults();
+  if (tab==='knockout')    renderKnockoutAdmin();
+  if (tab==='players')     renderPlayers();
+  if (tab==='leaderboard') refreshLeaderboard();
+};
+
+/* ── Group Results ───────────────────────────────────────────── */
+function renderGroupResults() {
+  const sorted = FIXTURES.slice().sort((a,b)=>new Date(a.kickoff)-new Date(b.kickoff));
+  const byDate = {}, dateOrder = [];
+  sorted.forEach(f=>{
+    const dk = new Date(f.kickoff).toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    if(!byDate[dk]){byDate[dk]=[];dateOrder.push(dk);}
+    byDate[dk].push(f);
+  });
+  let html = "";
+  dateOrder.forEach(dk=>{
+    html += `<div class="group"><div class="ghead"><span class="gbadge">${dk}</span></div>`;
+    byDate[dk].forEach(f=>{
+      const r = S.results[f.id] || "";
+      html += `<div class="card admin-match">
+        <div class="admin-teams">${flag(f.home)} ${esc(f.home)} <span class="vs">v</span> ${esc(f.away)} ${flag(f.away)}</div>
+        <div class="admin-date">${fmtDate(f.kickoff)}${r?` · <b style="color:var(--grass)">Result: ${esc(r)}</b>`:""}</div>
+        <div class="admin-btns">
+          <button class="res-btn${r===f.home?' sel':''}" onclick="setResult('${f.id}','${f.home}')">${flag(f.home)} ${esc(f.home)}</button>
+          <button class="res-btn${r==='Draw'?' sel':''}" onclick="setResult('${f.id}','Draw')">🤝 Draw</button>
+          <button class="res-btn${r===f.away?' sel':''}" onclick="setResult('${f.id}','${f.away}')">${flag(f.away)} ${esc(f.away)}</button>
+          ${r?`<button class="res-btn clear-btn" onclick="setResult('${f.id}','')">✕ Clear</button>`:''}
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  $("section-groups").innerHTML = `
+    <p style="font-size:12px;color:var(--muted);margin:0 0 16px">Tap the correct outcome after each match.</p>
+    ${html}`;
+}
+
+window.setResult = async function(matchId, result) {
+  try {
+    if (result) S.results[matchId] = result;
+    else delete S.results[matchId];
+    await writeSettingsDoc();
+    toast(result ? `${matchId}: ${result} ✓` : `${matchId} cleared`);
+    renderGroupResults();
+    refreshLeaderboard();
+  } catch(e) { toast("Save failed", true); console.error(e); }
+};
+
+/* ── Knockout Admin ──────────────────────────────────────────── */
+function renderKnockoutAdmin() {
+  const standings = computeGroupStandings();
+
+  // Standings grid
+  let stdHtml = `<div class="standings-grid">`;
+  GROUP_ORDER.forEach(g=>{
+    stdHtml += `<div class="standings-group"><div class="standings-title">Group ${g}</div>`;
+    standings[g].forEach((t,i)=>{
+      const badge = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+      stdHtml += `<div class="standings-row"><span class="standings-rank">${badge}</span><span class="standings-name">${flag(t.team)} ${esc(t.team)}</span><span class="standings-pts">${t.pts}pt</span></div>`;
+    });
+    stdHtml += `</div>`;
+  });
+  stdHtml += `</div>`;
+
+  // ── 3rd-place qualifier selector ─────────────────────────────
+  const thirds = GROUP_ORDER.map(g => ({
+    group: g,
+    team: standings[g]?.[2]?.team || '—',
+    pts:  standings[g]?.[2]?.pts  ?? 0,
+    w:    standings[g]?.[2]?.w    ?? 0,
+    d:    standings[g]?.[2]?.d    ?? 0,
+    l:    standings[g]?.[2]?.l    ?? 0,
+    played: standings[g]?.[2]?.played ?? 0,
+  }));
+  const sel = new Set(S.koThirdQualifiers);
+  const tooMany = sel.size > 8;
+
+  let thirdHtml = `<div class="card third-sel-card">
+    <div class="third-sel-hdr">
+      <span>🥉 Select 8 Best Third-Place Teams</span>
+      <span class="third-count ${sel.size===8?'ok':sel.size>8?'over':''}">${sel.size}/8 selected</span>
+    </div>
+    <p style="font-size:11px;color:var(--muted);margin:0 0 12px">Tap each group's third-place team to include or exclude them from the knockout round.</p>
+    <div class="third-grid">`;
+
+  thirds.forEach(({group, team, pts, w, d, l, played}) => {
+    const on = sel.has(group);
+    thirdHtml += `<div class="third-chip ${on?'on':''} ${!played?'no-data':''}" onclick="toggleThird('${group}')">
+      <div class="third-chip-grp">Grp ${group}</div>
+      <div class="third-chip-team">${flag(team)} ${esc(team)}</div>
+      <div class="third-chip-pts">${played ? `${pts}pt · ${w}W ${d}D ${l}L` : 'No results'}</div>
+    </div>`;
+  });
+
+  thirdHtml += `</div>`;
+  if (sel.size === 8) {
+    thirdHtml += `<button class="btn" style="margin-top:14px;width:100%" onclick="saveThirdQualifiers()">✓ Save Selection</button>`;
+  } else {
+    thirdHtml += `<p style="font-size:12px;color:var(--${sel.size>8?'red':'muted'});margin:12px 0 0;text-align:center">${sel.size>8?'Too many selected — remove '+(sel.size-8)+' team(s)':'Select exactly 8 teams to continue'}</p>`;
+  }
+  thirdHtml += `</div>`;
+
+  // R32 setup
+  let r32Html = "";
+  BRACKET.filter(m=>m.round==='R32').forEach(m=>{
+    const saved = S.koR32Teams[m.id] || {};
+    const suggestTeam = slot => {
+      const match = slot.match(/^([12])([A-L])$/);
+      if (match) { const pos=parseInt(match[1])-1, grp=match[2]; return standings[grp]?.[pos]?.team||''; }
+      return '';
+    };
+    const sug1=suggestTeam(m.slot1), sug2=suggestTeam(m.slot2);
+    const home=saved.home||'', away=saved.away||'', isSet=home&&away;
+    const kr=S.koResults[m.id]||'';
+    r32Html += `<div class="card admin-match">
+      <div class="admin-teams" style="color:var(--amber);font-size:12px">
+        Match ${m.id.replace('M','')} · ${fmtDate(m.kickoff)} · ${m.venue||''}
+      </div>
+      <div class="admin-date" style="font-size:11px;margin-bottom:8px">
+        Slot 1: <b>${m.slot1}</b>${sug1?' → '+sug1:''} &nbsp;|&nbsp; Slot 2: <b>${m.slot2}</b>${sug2?' → '+sug2:''}
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div>
+          <label style="font-size:10px">Team 1 (${esc(m.slot1)})</label>
+          <input type="text" id="r32h_${m.id}" value="${esc(home)}" placeholder="${esc(sug1||m.slot1)}" list="team-list" style="margin-bottom:0;font-size:13px;padding:9px 11px">
+        </div>
+        <div>
+          <label style="font-size:10px">Team 2 (${esc(m.slot2)})</label>
+          <input type="text" id="r32a_${m.id}" value="${esc(away)}" placeholder="${esc(sug2||m.slot2)}" list="team-list" style="margin-bottom:0;font-size:13px;padding:9px 11px">
+        </div>
+      </div>
+      <div class="admin-btns">
+        ${sug1&&sug2?`<button class="res-btn" onclick="autoFillR32('${m.id}','${sug1}','${sug2}')">✨ Auto-fill</button>`:''}
+        <button class="res-btn" onclick="saveR32Teams('${m.id}')">💾 Save</button>
+        ${isSet?`<button class="res-btn${kr===home?' sel':''}" onclick="setKoResult('${m.id}','${home}')">${flag(home)} ${esc(home)} wins</button>
+        <button class="res-btn${kr===away?' sel':''}" onclick="setKoResult('${m.id}','${away}')">${flag(away)} ${esc(away)} wins</button>`:''}
+        ${kr?`<button class="res-btn clear-btn" onclick="setKoResult('${m.id}','')">✕ Clear</button>`:''}
+      </div>
+    </div>`;
+  });
+
+  // Higher rounds
+  let higherHtml = "";
+  KO_ROUND_ORDER.slice(1).forEach(round=>{
+    const matches = BRACKET.filter(m=>m.round===round);
+    if (!matches.length) return;
+    higherHtml += `<div class="group"><div class="ghead"><span class="gbadge ko-badge">${KO_ROUND_LABELS[round]}</span></div>`;
+    matches.forEach(match=>{
+      const teams = getKoTeams(match.id);
+      const kr = S.koResults[match.id] || '';
+      if (!teams) {
+        higherHtml += `<div class="card admin-match"><div class="admin-teams" style="color:var(--muted)">${match.id} · TBD vs TBD</div><div class="admin-date">${fmtDate(match.kickoff)} · ${match.venue||''}</div></div>`;
+        return;
+      }
+      higherHtml += `<div class="card admin-match">
+        <div class="admin-teams">${flag(teams.home)} ${esc(teams.home)} <span class="vs">v</span> ${esc(teams.away)} ${flag(teams.away)}</div>
+        <div class="admin-date">${fmtDate(match.kickoff)} · ${match.venue||''}${kr?` · <b style="color:var(--grass)">Winner: ${esc(kr)}</b>`:''}</div>
+        <div class="admin-btns">
+          <button class="res-btn${kr===teams.home?' sel':''}" onclick="setKoResult('${match.id}','${teams.home}')">${flag(teams.home)} ${esc(teams.home)}</button>
+          <button class="res-btn${kr===teams.away?' sel':''}" onclick="setKoResult('${match.id}','${teams.away}')">${flag(teams.away)} ${esc(teams.away)}</button>
+          ${kr?`<button class="res-btn clear-btn" onclick="setKoResult('${match.id}','')">✕</button>`:''}
+        </div>
+      </div>`;
+    });
+    higherHtml += `</div>`;
+  });
+
+  const allTeams = [...new Set(FIXTURES.flatMap(f=>[f.home,f.away]))].sort();
+
+  $("section-knockout").innerHTML = `
+    <datalist id="team-list">${allTeams.map(t=>`<option value="${t}">`).join("")}</datalist>
+    <div class="settings-form">
+      <h3>📊 Group Standings</h3>${stdHtml}
+    </div>
+    <div class="settings-form">
+      <h3>🥉 Best Third-Place Teams</h3>
+      ${thirdHtml}
+    </div>
+    <div class="settings-form">
+      <h3>🏟 Round of 32 — Set Teams</h3>
+      <p style="font-size:12px;color:var(--muted);margin:0 0 14px">Fill in the two qualifying teams for each R32 match.</p>
+      ${r32Html}
+    </div>
+    ${higherHtml ? `<div class="settings-form"><h3>⚽ Higher Rounds — Enter Results</h3>${higherHtml}</div>` : ''}
+  `;
+}
+
+window.toggleThird = function(group) {
+  const sel = new Set(S.koThirdQualifiers);
+  if (sel.has(group)) sel.delete(group);
+  else sel.add(group);
+  S.koThirdQualifiers = [...sel];
+  renderKnockoutAdmin();
+};
+
+window.saveThirdQualifiers = async function() {
+  if (S.koThirdQualifiers.length !== 8) { toast("Select exactly 8 teams", true); return; }
+  try {
+    await writeSettingsDoc();
+    toast("3rd-place qualifiers saved ✓");
+  } catch(e) { toast("Save failed", true); console.error(e); }
+};
+
+window.autoFillR32 = function(matchId, t1, t2) {
+  const h = $(`r32h_${matchId}`), a = $(`r32a_${matchId}`);
+  if(h) h.value=t1; if(a) a.value=t2;
+};
+window.saveR32Teams = async function(matchId) {
+  const home = ($(`r32h_${matchId}`)?.value||'').trim();
+  const away = ($(`r32a_${matchId}`)?.value||'').trim();
+  if(!home||!away){toast("Enter both teams",true);return;}
+  if(home===away){toast("Teams must be different",true);return;}
+  S.koR32Teams[matchId] = {home, away};
+  try {
+    await writeSettingsDoc();
+    toast(`${matchId}: ${home} vs ${away} ✓`);
+    renderKnockoutAdmin();
+  } catch(e){toast("Save failed",true);console.error(e);}
+};
+window.setKoResult = async function(matchId, winner) {
+  try {
+    if (winner) S.koResults[matchId] = winner;
+    else delete S.koResults[matchId];
+    await writeSettingsDoc();
+    toast(winner ? `${matchId}: ${winner} ✓` : `${matchId} cleared`);
+    renderKnockoutAdmin();
+    refreshLeaderboard();
+  } catch(e){toast("Save failed",true);console.error(e);}
+};
+
+/* ── Players ─────────────────────────────────────────────────── */
+async function renderPlayers() {
+  $("section-players").innerHTML = `<div class="empty"><span class="spin"></span> Loading players…</div>`;
+  try {
+    const [playersSnap, predsSnap] = await Promise.all([
+      getDocs(collection(db,'players')),
+      getDocs(collection(db,'predictions'))
+    ]);
+
+    const predMap = {};
+    predsSnap.forEach(d=>{
+      const p = d.data();
+      predMap[d.id] = {
+        updated: p.updated || null,
+        pickCount: Object.keys(p.picks||{}).length
+      };
+    });
+
+    const players = [];
+    playersSnap.forEach(d => players.push({...d.data(), phone: d.id}));
+    players.sort((a,b)=>{
+      const au = predMap[a.phone]?.updated;
+      const bu = predMap[b.phone]?.updated;
+      if(!au && !bu) return a.name.localeCompare(b.name);
+      if(!au) return 1; if(!bu) return -1;
+      const at = au.toDate ? au.toDate().getTime() : new Date(au).getTime();
+      const bt = bu.toDate ? bu.toDate().getTime() : new Date(bu).getTime();
+      return bt - at;
+    });
+
+    if (!players.length) {
+      $("section-players").innerHTML = `<div class="empty">No players have joined yet.</div>`;
+      return;
+    }
+
+    const total = players.length;
+    const paid  = players.filter(p => p.paid).length;
+
+    let rows = "";
+    players.forEach((p,i)=>{
+      const pred = predMap[p.phone];
+      const pickCount  = pred?.pickCount ?? 0;
+      const lastEdit   = pred?.updated ? timeAgo(pred.updated)    : '—';
+      const lastEditFull = pred?.updated ? fmtDateShort(pred.updated) : '';
+      const joined     = p.joined ? fmtDateShort(p.joined) : '—';
+      const maskedPhone = p.phone ? `${p.phone.slice(0,-4).replace(/\d/g,'·')}${p.phone.slice(-4)}` : '—';
+      const isPaid     = !!p.paid;
+
+      rows += `<tr id="pr-${p.phone}">
+        <td class="pr-rank">${i+1}</td>
+        <td class="pr-name">${esc(p.name||'?')}</td>
+        <td class="pr-phone">${esc(maskedPhone)}</td>
+        <td class="pr-picks"><b>${pickCount}</b></td>
+        <td class="pr-edit" title="${lastEditFull}">${lastEdit}</td>
+        <td class="pr-joined">${joined}</td>
+        <td class="pr-paid">
+          <button class="res-btn${isPaid?' paid-btn':' unpaid-btn'}"
+            onclick="togglePaid('${p.phone}',${!isPaid})">
+            ${isPaid ? '✓ Paid' : 'Unpaid'}
+          </button>
+        </td>
+        <td class="pr-del">
+          <button class="res-btn clear-btn" onclick="deletePlayer('${p.phone}','${esc(p.name||'')}')">🗑</button>
+        </td>
+      </tr>`;
+    });
+
+    $("section-players").innerHTML = `
+      <div class="players-summary">
+        <span>${total} joined</span>
+        <span class="paid-count">💰 ${paid} paid</span>
+        <button class="res-btn" onclick="renderPlayers()" style="margin-left:auto">↻ Refresh</button>
+      </div>
+      <div class="card" style="overflow-x:auto;padding:0">
+        <table class="player-table">
+          <thead><tr>
+            <th>#</th><th>Name</th><th>Phone</th><th>Picks</th>
+            <th>Last edited</th><th>Joined</th><th>Payment</th><th></th>
+          </tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+  } catch(e) {
+    $("section-players").innerHTML = `<div class="empty">Failed to load players.</div>`;
+    console.error(e);
+  }
+}
+
+window.togglePaid = async function(phone, newState) {
+  try {
+    await updateDoc(doc(db,'players',phone), {paid: newState});
+    toast(newState ? '✓ Marked as paid' : 'Marked as unpaid');
+    renderPlayers();
+  } catch(e) { toast("Update failed", true); console.error(e); }
+};
+
+window.deletePlayer = async function(phone, name) {
+  if (!confirm(`Delete "${name}" (${phone})?\nThis removes their account and all picks. Cannot be undone.`)) return;
+  try {
+    await Promise.all([
+      deleteDoc(doc(db,'players',phone)),
+      deleteDoc(doc(db,'predictions',phone))
+    ]);
+    toast(`${name} deleted`);
+    renderPlayers();
+  } catch(e) { toast("Delete failed", true); console.error(e); }
+};
+
+/* ── Admin Leaderboard ───────────────────────────────────────── */
+const WIN_POINTS  = 3;
+const DRAW_POINTS = 1;
+const KO_POINTS   = 6;
+
+function adminMigratePick(matchId, pick) {
+  if (!pick) return null;
+  if (pick === 'H') { const f = FIXTURES.find(x=>x.id===matchId); return f ? normalizeName(f.home) : null; }
+  if (pick === 'A') { const f = FIXTURES.find(x=>x.id===matchId); return f ? normalizeName(f.away) : null; }
+  if (pick === 'D') return 'Draw';
+  return normalizeName(pick);
+}
+
+async function refreshLeaderboard() {
+  const el = $("section-leaderboard");
+  if (!el) return;
+  // Only refresh if leaderboard tab is visible
+  if (S.adminTab !== 'leaderboard') return;
+  el.innerHTML = `<div class="empty"><span class="spin"></span> Calculating…</div>`;
+  try {
+    const [predsSnap, playersSnap] = await Promise.all([
+      getDocs(collection(db,'predictions')),
+      getDocs(collection(db,'players'))
+    ]);
+    const paidPhones = new Set();
+    playersSnap.forEach(d => { if (d.data().paid) paidPhones.add(d.id); });
+
+    const rows = [];
+    predsSnap.forEach(s => {
+      const {name, phone, picks={}} = s.data();
+      if (!paidPhones.has(phone)) return;
+      let pts=0, correct=0, predicted=0;
+      Object.entries(picks).forEach(([id, rawPick]) => {
+        const pick = adminMigratePick(id, rawPick);
+        if (!pick) return;
+        predicted++;
+        const r = S.results[id];
+        if (r && pick === r) { correct++; pts += (r==='Draw' ? DRAW_POINTS : WIN_POINTS); }
+        const kr = S.koResults[id];
+        if (kr && pick === kr) { correct++; pts += KO_POINTS; }
+      });
+      rows.push({name, phone, pts, correct, predicted});
+    });
+
+    rows.sort((a,b) => b.pts - a.pts || b.correct - a.correct);
+
+    if (!rows.length) {
+      el.innerHTML = `<div class="empty">No paid players yet.</div>`;
+      return;
+    }
+
+    const totalMatches = Object.keys(S.results).length + Object.keys(S.koResults).length;
+    let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">${totalMatches} result${totalMatches===1?'':'s'} entered · ${rows.length} paid player${rows.length===1?'':'s'}</div>`;
+    html += `<div class="lb-table-wrap"><table class="lb-table"><thead><tr><th>#</th><th>Player</th><th>Pts</th><th>✓</th></tr></thead><tbody>`;
+    rows.forEach((r,i) => {
+      const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+      html += `<tr>
+        <td style="color:var(--muted);width:28px">${medal||i+1}</td>
+        <td>${esc(r.name)}<br><span style="font-size:10px;color:var(--muted)">${esc(r.phone)}</span></td>
+        <td style="font-weight:700;color:var(--amber)">${r.pts}</td>
+        <td style="font-size:12px;color:var(--muted)">${r.correct}/${r.predicted}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+    el.innerHTML = html;
+  } catch(e) {
+    el.innerHTML = `<div class="empty">Failed to load leaderboard.</div>`;
+    console.error(e);
+  }
+}
+
+/* ── Settings ────────────────────────────────────────────────── */
+function renderEntryToggles() {
+  const grpBtn = $("toggle-group-entries");
+  const koBtn  = $("toggle-ko-entries");
+  if (grpBtn) {
+    grpBtn.textContent = S.entriesClosed   ? "🔓 Open Group Entries"    : "🔒 Close Group Entries";
+    grpBtn.className   = S.entriesClosed   ? "btn ghost toggle-open"    : "btn toggle-close";
+  }
+  if (koBtn) {
+    koBtn.textContent  = S.koEntriesClosed ? "🔓 Open KO Entries"       : "🔒 Close KO Entries";
+    koBtn.className    = S.koEntriesClosed ? "btn ghost toggle-open"    : "btn toggle-close";
+  }
+}
+
+window.toggleGroupEntries = async function() {
+  const next = !S.entriesClosed;
+  try {
+    await setDoc(doc(db,'settings','main'), {entries_closed: next}, {merge:true});
+    S.entriesClosed = next;
+    renderEntryToggles();
+    toast(next ? "Group entries closed 🔒" : "Group entries open 🔓");
+  } catch(e){ toast("Save failed",true); console.error(e); }
+};
+
+window.toggleKoEntries = async function() {
+  const next = !S.koEntriesClosed;
+  try {
+    await setDoc(doc(db,'settings','main'), {ko_entries_closed: next}, {merge:true});
+    S.koEntriesClosed = next;
+    renderEntryToggles();
+    toast(next ? "KO entries closed 🔒" : "KO entries open 🔓");
+  } catch(e){ toast("Save failed",true); console.error(e); }
+};
+
+window.saveSettings = async function() {
+  const name = $("admin-contest-name").value.trim();
+  try {
+    await setDoc(doc(db,'settings','main'), {contest_name: name || S.contestName}, {merge:true});
+    S.contestName = name || S.contestName;
+    toast("Settings saved ✓");
+  } catch(e){ toast("Save failed",true); console.error(e); }
+};
+
+/* ── Clear results (keep players/leaderboard) ────────────────── */
+window.clearAllResults = async function() {
+  if (!confirm("Clear ALL results, R32 teams, and KO results?\n\nPlayer records and leaderboard data are NOT deleted.")) return;
+  S.results = {}; S.koR32Teams = {}; S.koResults = {}; S.koThirdQualifiers = [];
+  try {
+    await writeSettingsDoc();
+    toast("Results cleared ✓");
+    switchTab(S.adminTab);
+  } catch(e) { toast("Failed", true); console.error(e); }
+};
+
+/* ── Auto-fill random group results (testing only) ──────────── */
+window.autoFillGroupResults = async function() {
+  if (!confirm("Auto-fill ALL 72 group matches with random results?\n(For testing only)")) return;
+  FIXTURES.forEach(f => {
+    const outcomes = [f.home, 'Draw', f.away];
+    S.results[f.id] = outcomes[Math.floor(Math.random()*3)];
+  });
+  try {
+    await writeSettingsDoc();
+    toast("72 results filled ✓");
+    renderGroupResults();
+    refreshLeaderboard();
+  } catch(e) { toast("Failed", true); console.error(e); }
+};
+
+/* ── Wire ────────────────────────────────────────────────────── */
+window.addEventListener('DOMContentLoaded', () => {
+  $("admin-pw")?.addEventListener("keydown", e => { if(e.key==="Enter") adminLogin(); });
+  // Auto-login if session is still active
+  if (sessionStorage.getItem('adminAuth') === ADMIN_PASSWORD) {
+    showPanel();
+  } else {
+    $("admin-pw")?.focus();
+  }
+});
+</script>
+
+<style>
+:root{
+  --bg:#0a120d;--panel:#11201a;--panel2:#182b22;--line:#273b30;
+  --ink:#eef4ee;--muted:#90a89a;--amber:#ffc233;--grass:#33c06b;
+  --grass-d:#1d7a43;--red:#ef5b5b;--shadow:0 18px 40px -22px rgba(0,0,0,.8);
+}
+*{box-sizing:border-box}html,body{margin:0}
+body{font-family:'Sora',system-ui,sans-serif;color:var(--ink);
+  background:radial-gradient(900px 500px at 80% -10%,rgba(255,194,51,.08),transparent 60%),
+    radial-gradient(900px 600px at -10% 10%,rgba(51,192,107,.10),transparent 55%),var(--bg);
+  min-height:100vh;-webkit-font-smoothing:antialiased;}
+.wrap{max-width:860px;margin:0 auto;padding:0 16px 60px}.hidden{display:none!important}
+
+/* Header */
+header{padding:24px 0 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.hdr-left{display:flex;align-items:center;gap:12px}
+.hdr-logo{width:52px;height:52px;border-radius:50%;object-fit:contain;background:#fff;padding:3px}
+.hdr-title{font-family:'Anton';font-weight:400;font-size:22px;letter-spacing:.03em;text-transform:uppercase}
+.hdr-sub{font-size:11px;color:var(--amber);font-weight:600;letter-spacing:.14em;text-transform:uppercase}
+
+/* Cards */
+.card{background:linear-gradient(180deg,var(--panel),#0e1a14);border:1px solid var(--line);
+  border-radius:18px;box-shadow:var(--shadow)}
+
+/* Auth */
+label{display:block;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+input[type=text],input[type=tel],input[type=password],input[type=datetime-local]{
+  width:100%;background:#0b1510;border:1px solid var(--line);color:var(--ink);
+  border-radius:11px;padding:13px 14px;font:600 15px 'Sora';outline:none;margin-bottom:14px}
+input:focus{border-color:var(--grass);box-shadow:0 0 0 3px rgba(51,192,107,.18)}
+.btn{appearance:none;border:0;cursor:pointer;border-radius:11px;font:700 15px 'Sora';
+  padding:13px 18px;color:#08130c;background:linear-gradient(180deg,#ffd152,var(--amber));transition:.12s}
+.btn:hover{filter:brightness(1.05)}.btn:active{transform:translateY(1px)}
+.btn.block{width:100%}.btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
+.err{color:var(--red);font-size:13px;margin-top:6px;min-height:18px}
+
+/* Tabs */
+.admin-tabs{display:flex;gap:8px;margin:20px 0}
+.admin-tab{flex:1;text-align:center;padding:10px;border-radius:11px;border:1px solid var(--line);
+  background:transparent;color:var(--muted);font:700 13px 'Sora';cursor:pointer}
+.admin-tab.on{background:var(--panel2);color:var(--ink);border-color:var(--grass)}
+
+/* Matches */
+.group{margin:20px 0}
+.ghead{display:flex;align-items:center;gap:10px;margin:0 2px 10px}
+.gbadge{font-family:'Anton';font-size:13px;letter-spacing:.05em;background:var(--grass-d);
+  color:#eafff1;padding:4px 10px;border-radius:7px}
+.ko-badge{background:linear-gradient(90deg,#7c3aed,#5b21b6)!important;color:#f0e8ff!important}
+.vs{color:var(--muted);font-size:11px}
+.admin-match{padding:12px 14px;margin:9px 0}
+.admin-teams{font-weight:700;font-size:14px;margin-bottom:4px}
+.admin-date{font-size:11px;color:var(--muted);margin-bottom:10px}
+.admin-btns{display:flex;gap:6px;flex-wrap:wrap}
+.res-btn{background:#0b1510;border:1px solid var(--line);color:var(--muted);border-radius:9px;
+  padding:8px 14px;font:700 12px 'Sora';cursor:pointer;transition:.12s}
+.res-btn:hover{border-color:var(--grass);color:var(--ink)}
+.res-btn.sel{background:linear-gradient(180deg,#2ee06f,#1d9c4f);color:#06140b;border-color:#2ee06f}
+.res-btn.clear-btn{color:var(--red);border-color:rgba(239,91,91,.3)}
+
+/* Settings form */
+.settings-form{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:20px;margin-bottom:20px}
+.settings-form h3{font:700 14px 'Sora';letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);margin:0 0 14px}
+.entry-toggles{border-top:1px solid var(--line);padding-top:16px}
+.entry-toggle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.toggle-close{background:linear-gradient(180deg,#ef7b7b,var(--red))!important;color:#fff!important;font-size:13px!important;padding:10px 16px!important}
+.toggle-open{font-size:13px!important;padding:10px 16px!important;color:var(--grass)!important;border-color:var(--grass)!important}
+
+/* Standings */
+.standings-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+.standings-group{background:#0b1510;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.standings-title{font-family:'Anton';font-size:13px;color:var(--amber);margin-bottom:8px;letter-spacing:.06em}
+.standings-row{display:flex;align-items:center;gap:6px;padding:3px 0;font-size:11px;
+  border-bottom:1px solid rgba(39,59,48,.4)}
+.standings-row:last-child{border-bottom:0}
+.standings-rank{width:18px;font-size:13px}
+.standings-name{flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.standings-pts{font-weight:700;color:var(--amber);font-size:10px}
+
+/* Players table */
+.player-table{width:100%;border-collapse:collapse;font-size:13px}
+.player-table th{font:700 10px 'Sora';letter-spacing:.14em;text-transform:uppercase;color:var(--muted);
+  padding:10px 14px;border-bottom:1px solid var(--line);text-align:left}
+.player-table td{padding:11px 14px;border-bottom:1px solid rgba(39,59,48,.4)}
+.player-table tr:last-child td{border-bottom:0}
+.player-table tr:hover td{background:rgba(255,194,51,.04)}
+.pr-rank{color:var(--muted);font-family:'Anton';font-size:15px;width:36px}
+.pr-name{font-weight:700}
+.pr-phone{font-size:11px;color:var(--muted);font-family:monospace}
+.pr-picks b{color:var(--amber)}
+.pr-edit{color:var(--grass);font-size:12px}
+.pr-joined{font-size:11px;color:var(--muted)}
+.pr-paid,.pr-del{white-space:nowrap}
+.paid-btn{color:#06140b!important;background:linear-gradient(180deg,#2ee06f,#1d9c4f)!important;border-color:#2ee06f!important}
+.unpaid-btn{color:var(--amber)!important;border-color:rgba(255,194,51,.4)!important}
+.players-summary{display:flex;align-items:center;gap:14px;margin-bottom:12px;font-size:13px;color:var(--muted)}
+.paid-count{font-weight:700;color:var(--amber)}
+
+/* 3rd-place qualifier selector */
+.third-sel-card{padding:16px}
+.third-sel-hdr{display:flex;justify-content:space-between;align-items:center;font-weight:700;font-size:14px;margin-bottom:8px}
+.third-count{font-size:12px;padding:3px 10px;border-radius:20px;background:var(--panel2);color:var(--muted)}
+.third-count.ok{background:rgba(51,192,107,.18);color:var(--grass)}
+.third-count.over{background:rgba(239,91,91,.18);color:var(--red)}
+.third-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.third-chip{border:1.5px solid var(--line);border-radius:10px;padding:10px 10px 8px;cursor:pointer;transition:.15s;user-select:none;background:var(--panel2)}
+.third-chip:active{transform:scale(.97)}
+.third-chip.on{border-color:var(--grass);background:rgba(51,192,107,.12)}
+.third-chip.no-data{opacity:.55}
+.third-chip-grp{font-size:10px;font-weight:700;color:var(--amber);letter-spacing:.1em;margin-bottom:3px}
+.third-chip-team{font-size:12px;font-weight:600;color:var(--ink);margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.third-chip-pts{font-size:10px;color:var(--muted)}
+.third-chip.on .third-chip-grp{color:var(--grass)}
+
+/* Leaderboard table */
+.lb-table-wrap{overflow-x:auto}
+.lb-table{width:100%;border-collapse:collapse;font-size:13px}
+.lb-table th{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font-size:11px;color:var(--muted);font-weight:600}
+.lb-table td{padding:9px 10px;border-bottom:1px solid rgba(255,255,255,.04)}
+.lb-table tr:last-child td{border-bottom:none}
+
+/* Misc */
+.empty{padding:34px 18px;text-align:center;color:var(--muted);font-size:13.5px;line-height:1.6}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(20px);
+  background:var(--grass);color:#06140b;font-weight:700;font-size:13px;
+  padding:11px 18px;border-radius:30px;opacity:0;transition:.25s;z-index:40;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%)}
+.toast.bad{background:var(--red);color:#fff}
+.spin{display:inline-block;width:15px;height:15px;border:2px solid #ffffff55;
+  border-top-color:#06140b;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
+@keyframes sp{to{transform:rotate(360deg)}}
+footer{text-align:center;color:var(--muted);font-size:11px;padding:24px 0;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="hdr-left">
+      <img src="logo.png" alt="" class="hdr-logo" onerror="this.style.display='none'">
+      <div>
+        <div class="hdr-title">🛠 Admin Panel</div>
+        <div class="hdr-sub">MKRA WC '26</div>
+      </div>
+    </div>
+    <a href="index.html" class="btn ghost" style="font-size:13px;padding:9px 16px">← Player view</a>
+  </header>
+
+  <!-- Login -->
+  <div id="login-section">
+    <div class="card" style="padding:24px;max-width:400px;margin:0 auto">
+      <p style="color:var(--muted);font-size:13px;margin:0 0 14px">Enter admin password to continue.</p>
+      <label for="admin-pw">Admin password</label>
+      <input type="password" id="admin-pw" placeholder="••••••••">
+      <button class="btn block" onclick="adminLogin()">Sign in</button>
+      <div class="err" id="admin-err"></div>
+    </div>
+  </div>
+
+  <!-- Panel (hidden until login) -->
+  <div id="panel-section" class="hidden">
+
+    <div style="display:flex;justify-content:flex-end;margin-bottom:4px">
+      <button class="btn ghost" onclick="adminLogout()" style="font-size:11px;padding:6px 14px">🔓 Logout</button>
+    </div>
+
+    <!-- Settings -->
+    <div class="settings-form" style="margin-top:8px">
+      <h3>⚙️ Contest Settings</h3>
+      <label for="admin-contest-name">Contest name</label>
+      <input type="text" id="admin-contest-name" placeholder="MKRA WC '26" style="margin-bottom:8px">
+      <button class="btn" onclick="saveSettings()" style="margin-bottom:20px">Save Name</button>
+
+      <div style="border-top:1px solid var(--line);padding-top:16px;margin-top:4px">
+        <div style="font-size:11px;color:var(--amber);font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px">🧪 Testing</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn ghost" onclick="autoFillGroupResults()" style="font-size:12px;flex:1">⚡ Auto-fill 72 Results</button>
+          <button class="btn ghost" style="font-size:12px;flex:1;color:var(--red)!important;border-color:var(--red)!important" onclick="clearAllResults()">🗑 Clear All Results</button>
+        </div>
+      </div>
+      <div class="entry-toggles">
+        <div class="entry-toggle-row">
+          <div>
+            <div style="font-weight:700;font-size:13px">Group Stage Entries</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Lock picks for all group matches</div>
+          </div>
+          <button id="toggle-group-entries" class="btn toggle-close" onclick="toggleGroupEntries()">🔒 Close Group Entries</button>
+        </div>
+        <div class="entry-toggle-row" style="margin-top:12px">
+          <div>
+            <div style="font-weight:700;font-size:13px">Knockout Entries</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">Lock picks for bracket predictions</div>
+          </div>
+          <button id="toggle-ko-entries" class="btn toggle-close" onclick="toggleKoEntries()">🔒 Close KO Entries</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="admin-tabs">
+      <button class="admin-tab on" id="tab-groups"      onclick="switchTab('groups')">⚽ Groups</button>
+      <button class="admin-tab"    id="tab-knockout"   onclick="switchTab('knockout')">🏆 Knockout</button>
+      <button class="admin-tab"    id="tab-players"    onclick="switchTab('players')">👥 Players</button>
+      <button class="admin-tab"    id="tab-leaderboard" onclick="switchTab('leaderboard')">📊 Leaderboard</button>
+    </div>
+
+    <div id="section-groups"></div>
+    <div id="section-knockout"    class="hidden"></div>
+    <div id="section-players"     class="hidden"></div>
+    <div id="section-leaderboard" class="hidden"></div>
+
+  </div>
+
+  <footer>Admin panel · Changes live immediately<br>
+    <span style="opacity:.6">© 2026 United Maruthukaval Arts &amp; Sports Club</span>
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+</body>
+</html>

@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>3rd Place Logic Verifier — FIFA WC 2026</title>
+<style>
+  body { font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; margin: 0; padding: 16px; }
+  h1 { color: #f59e0b; font-size: 1.2rem; margin-bottom: 4px; }
+  h2 { color: #94a3b8; font-size: 0.85rem; font-weight: 500; margin: 0 0 16px; }
+  .section { background: #1e293b; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
+  .section-title { font-size: 0.8rem; text-transform: uppercase; color: #64748b; letter-spacing: 1px; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  th { text-align: left; padding: 6px 8px; color: #64748b; border-bottom: 1px solid #334155; font-weight: 500; }
+  td { padding: 6px 8px; border-bottom: 1px solid #1e293b; vertical-align: top; }
+  tr:hover td { background: #1a2840; }
+  .chip { display: inline-block; background: #334155; border-radius: 4px; padding: 2px 6px; font-size: 0.75rem; margin: 1px; }
+  .chip.sel { background: #1d4ed8; color: #bfdbfe; }
+  .chip.forced { background: #166534; color: #bbf7d0; }
+  .chip.assigned { background: #7c3aed; color: #ddd6fe; }
+  .chip.winner { background: #d97706; color: #fef3c7; }
+  .btn { background: #2563eb; color: white; border: none; border-radius: 8px; padding: 8px 16px; font-size: 0.85rem; cursor: pointer; margin: 4px; }
+  .btn:hover { background: #1d4ed8; }
+  .btn.ghost { background: #334155; }
+  .btn.ghost:hover { background: #475569; }
+  .group-check { display: inline-flex; align-items: center; gap: 4px; background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 4px 8px; margin: 3px; cursor: pointer; font-size: 0.82rem; }
+  .group-check.on { border-color: #3b82f6; background: #1e3a5f; color: #93c5fd; }
+  .group-check:hover { border-color: #60a5fa; }
+  .result-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-radius: 6px; background: #0f172a; margin-bottom: 6px; }
+  .arrow { color: #475569; margin: 0 6px; }
+  .note { font-size: 0.75rem; color: #64748b; margin-top: 4px; }
+  .tag-forced { background: #166534; color: #bbf7d0; font-size: 0.7rem; border-radius: 4px; padding: 1px 5px; }
+  .tag-points { background: #44337a; color: #d6bcfa; font-size: 0.7rem; border-radius: 4px; padding: 1px 5px; }
+  .groups-row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px; }
+  #trace { font-size: 0.78rem; line-height: 1.7; color: #94a3b8; }
+  #trace b { color: #c4b5fd; }
+  #trace .step { padding: 4px 8px; background: #0f172a; border-radius: 4px; margin-bottom: 4px; }
+  .match-pair { display: flex; gap: 8px; margin-bottom: 4px; font-size: 0.82rem; }
+  .match-pair .mid { color: #64748b; width: 36px; flex-shrink: 0; }
+  .match-pair .slots { flex: 1; }
+  .match-pair .grps { color: #7dd3fc; flex: 1; }
+</style>
+</head>
+<body>
+
+<h1>🔍 3rd Place Slot Assignment — FIFA WC 2026</h1>
+<h2>Pick 8 groups → see which team fills each R32 slot</h2>
+
+<!-- SECTION 1: Group Stage Teams -->
+<div class="section">
+  <div class="section-title">Step 1 — All 12 Groups (for reference)</div>
+  <table>
+    <tr>
+      <th>Group</th><th>1st Place Slot</th><th>Teams</th>
+    </tr>
+    <tr><td>A</td><td class="chip">1A</td><td>Mexico, South Africa, South Korea, Czech Republic</td></tr>
+    <tr><td>B</td><td class="chip">1B</td><td>Canada, Bosnia & Herzegovina, Qatar, Switzerland</td></tr>
+    <tr><td>C</td><td class="chip">1C</td><td>Brazil, Morocco, Haiti, Scotland</td></tr>
+    <tr><td>D</td><td class="chip">1D</td><td>USA, Paraguay, Australia, Turkey</td></tr>
+    <tr><td>E</td><td class="chip">1E</td><td>Germany, Curaçao, Ivory Coast, Ecuador</td></tr>
+    <tr><td>F</td><td class="chip">1F</td><td>Netherlands, Japan, Sweden, Tunisia</td></tr>
+    <tr><td>G</td><td class="chip">1G</td><td>Belgium, Egypt, Iran, New Zealand</td></tr>
+    <tr><td>H</td><td class="chip">1H</td><td>Spain, Cape Verde, Saudi Arabia, Uruguay</td></tr>
+    <tr><td>I</td><td class="chip">1I</td><td>France, Senegal, Iraq, Norway</td></tr>
+    <tr><td>J</td><td class="chip">1J</td><td>Argentina, Algeria, Austria, Jordan</td></tr>
+    <tr><td>K</td><td class="chip">1K</td><td>Portugal, DR Congo, Uzbekistan, Colombia</td></tr>
+    <tr><td>L</td><td class="chip">1L</td><td>England, Croatia, Ghana, Panama</td></tr>
+  </table>
+</div>
+
+<!-- SECTION 2: Official Slot Eligibility -->
+<div class="section">
+  <div class="section-title">Step 2 — Official FIFA Slot Eligibility (from FIFA PDF)</div>
+  <p class="note">Each R32 match has a "3rd place" slot. FIFA pre-defines which groups can fill each slot. This is FIXED — not our choice.</p>
+  <table>
+    <tr><th>Match</th><th>Slot label</th><th>Opponent (1st place from group)</th><th>Eligible Groups for 3rd slot</th></tr>
+    <tr><td>M74</td><td class="chip">3rd(A/B/C/D/F)</td><td>1E = Group E winner</td><td><span class="chip">A</span><span class="chip">B</span><span class="chip">C</span><span class="chip">D</span><span class="chip">F</span></td></tr>
+    <tr><td>M77</td><td class="chip">3rd(C/D/F/G/H)</td><td>1I = Group I winner</td><td><span class="chip">C</span><span class="chip">D</span><span class="chip">F</span><span class="chip">G</span><span class="chip">H</span></td></tr>
+    <tr><td>M79</td><td class="chip">3rd(C/E/F/H/I)</td><td>1A = Group A winner</td><td><span class="chip">C</span><span class="chip">E</span><span class="chip">F</span><span class="chip">H</span><span class="chip">I</span></td></tr>
+    <tr><td>M80</td><td class="chip">3rd(E/H/I/J/K)</td><td>1L = Group L winner</td><td><span class="chip">E</span><span class="chip">H</span><span class="chip">I</span><span class="chip">J</span><span class="chip">K</span></td></tr>
+    <tr><td>M81</td><td class="chip">3rd(B/E/F/I/J)</td><td>1D = Group D winner</td><td><span class="chip">B</span><span class="chip">E</span><span class="chip">F</span><span class="chip">I</span><span class="chip">J</span></td></tr>
+    <tr><td>M82</td><td class="chip">3rd(A/E/H/I/J)</td><td>1G = Group G winner</td><td><span class="chip">A</span><span class="chip">E</span><span class="chip">H</span><span class="chip">I</span><span class="chip">J</span></td></tr>
+    <tr><td>M85</td><td class="chip">3rd(E/F/G/I/J)</td><td>1B = Group B winner</td><td><span class="chip">E</span><span class="chip">F</span><span class="chip">G</span><span class="chip">I</span><span class="chip">J</span></td></tr>
+    <tr><td>M87</td><td class="chip">3rd(D/E/I/J/L)</td><td>1K = Group K winner</td><td><span class="chip">D</span><span class="chip">E</span><span class="chip">I</span><span class="chip">J</span><span class="chip">L</span></td></tr>
+  </table>
+  <p class="note" style="margin-top:8px">⚠️ Groups E, I, J appear in 5–6 slots each. Without constraint logic, the same team would fill multiple slots!</p>
+</div>
+
+<!-- SECTION 3: Interactive Assignment -->
+<div class="section">
+  <div class="section-title">Step 3 — Pick 8 Groups → See Assignment</div>
+  <p class="note">Select exactly 8 groups that advance as 3rd place. The algorithm assigns each to exactly one slot.</p>
+  <div class="groups-row" id="group-picker">
+    <!-- filled by JS -->
+  </div>
+  <div id="pick-count" style="font-size:0.78rem;color:#64748b;margin-bottom:12px;">0 / 8 selected</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+    <button class="btn ghost" onclick="presetAll()">Pick first 8 groups (A–H)</button>
+    <button class="btn ghost" onclick="presetKL()">Pick strong groups (E,G,I,J,K,L + 2)</button>
+    <button class="btn ghost" onclick="clearAll()">Clear all</button>
+  </div>
+  <div id="assignment-output" style="display:none">
+    <div class="section-title">Assignment Result</div>
+    <table>
+      <tr><th>Match</th><th>Vs. (1st place)</th><th>3rd place team fills slot from group...</th><th>How decided</th></tr>
+      <tbody id="result-table"></tbody>
+    </table>
+    <div style="margin-top:12px" id="trace-wrap">
+      <div class="section-title">Constraint Propagation Trace</div>
+      <div id="trace"></div>
+    </div>
+  </div>
+</div>
+
+<!-- SECTION 4: Full Bracket path -->
+<div class="section">
+  <div class="section-title">Step 4 — Full Bracket Path (R32 → Final)</div>
+  <table>
+    <tr><th>Round</th><th>Match</th><th>Home slot / feeds</th><th>Away slot / feeds</th><th>Winner goes to</th></tr>
+    <tr><td>R32</td><td>M73</td><td>2A</td><td>2B</td><td>M90</td></tr>
+    <tr><td>R32</td><td>M74</td><td>1E</td><td>3rd(A/B/C/D/F)</td><td>M89</td></tr>
+    <tr><td>R32</td><td>M75</td><td>1F</td><td>2C</td><td>M90</td></tr>
+    <tr><td>R32</td><td>M76</td><td>1C</td><td>2F</td><td>M91</td></tr>
+    <tr><td>R32</td><td>M77</td><td>1I</td><td>3rd(C/D/F/G/H)</td><td>M89</td></tr>
+    <tr><td>R32</td><td>M78</td><td>2E</td><td>2I</td><td>M91</td></tr>
+    <tr><td>R32</td><td>M79</td><td>1A</td><td>3rd(C/E/F/H/I)</td><td>M92</td></tr>
+    <tr><td>R32</td><td>M80</td><td>1L</td><td>3rd(E/H/I/J/K)</td><td>M92</td></tr>
+    <tr><td>R32</td><td>M81</td><td>1D</td><td>3rd(B/E/F/I/J)</td><td>M94</td></tr>
+    <tr><td>R32</td><td>M82</td><td>1G</td><td>3rd(A/E/H/I/J)</td><td>M94</td></tr>
+    <tr><td>R32</td><td>M83</td><td>2K</td><td>2L</td><td>M93</td></tr>
+    <tr><td>R32</td><td>M84</td><td>1H</td><td>2J</td><td>M93</td></tr>
+    <tr><td>R32</td><td>M85</td><td>1B</td><td>3rd(E/F/G/I/J)</td><td>M96</td></tr>
+    <tr><td>R32</td><td>M86</td><td>1J</td><td>2H</td><td>M95</td></tr>
+    <tr><td>R32</td><td>M87</td><td>1K</td><td>3rd(D/E/I/J/L)</td><td>M96</td></tr>
+    <tr><td>R32</td><td>M88</td><td>2D</td><td>2G</td><td>M95</td></tr>
+    <tr><td>R16</td><td>M89</td><td colspan="2">Winner M74 vs Winner M77</td><td>M97</td></tr>
+    <tr><td>R16</td><td>M90</td><td colspan="2">Winner M73 vs Winner M75</td><td>M97</td></tr>
+    <tr><td>R16</td><td>M91</td><td colspan="2">Winner M76 vs Winner M78</td><td>M99</td></tr>
+    <tr><td>R16</td><td>M92</td><td colspan="2">Winner M79 vs Winner M80</td><td>M99</td></tr>
+    <tr><td>R16</td><td>M93</td><td colspan="2">Winner M83 vs Winner M84</td><td>M98</td></tr>
+    <tr><td>R16</td><td>M94</td><td colspan="2">Winner M81 vs Winner M82</td><td>M98</td></tr>
+    <tr><td>R16</td><td>M95</td><td colspan="2">Winner M86 vs Winner M88</td><td>M100</td></tr>
+    <tr><td>R16</td><td>M96</td><td colspan="2">Winner M85 vs Winner M87</td><td>M100</td></tr>
+    <tr><td>QF</td><td>M97</td><td colspan="2">Winner M89 vs Winner M90</td><td>M101</td></tr>
+    <tr><td>QF</td><td>M98</td><td colspan="2">Winner M93 vs Winner M94</td><td>M101</td></tr>
+    <tr><td>QF</td><td>M99</td><td colspan="2">Winner M91 vs Winner M92</td><td>M102</td></tr>
+    <tr><td>QF</td><td>M100</td><td colspan="2">Winner M95 vs Winner M96</td><td>M102</td></tr>
+    <tr><td>SF</td><td>M101</td><td colspan="2">Winner M97 vs Winner M98</td><td>FINAL / BRONZE</td></tr>
+    <tr><td>SF</td><td>M102</td><td colspan="2">Winner M99 vs Winner M100</td><td>FINAL / BRONZE</td></tr>
+    <tr><td>Bronze</td><td>BRONZE</td><td colspan="2">Loser M101 vs Loser M102</td><td>—</td></tr>
+    <tr><td>Final</td><td>FINAL</td><td colspan="2">Winner M101 vs Winner M102</td><td>🏆</td></tr>
+  </table>
+</div>
+
+<script>
+const GROUPS = ['A','B','C','D','E','F','G','H','I','J','K','L'];
+const THIRD_SLOTS = {
+  M74: ['A','B','C','D','F'],
+  M77: ['C','D','F','G','H'],
+  M79: ['C','E','F','H','I'],
+  M80: ['E','H','I','J','K'],
+  M81: ['B','E','F','I','J'],
+  M82: ['A','E','H','I','J'],
+  M85: ['E','F','G','I','J'],
+  M87: ['D','E','I','J','L'],
+};
+const MATCH_VS = {
+  M74: '1E (Group E winner)',
+  M77: '1I (Group I winner)',
+  M79: '1A (Group A winner)',
+  M80: '1L (Group L winner)',
+  M81: '1D (Group D winner)',
+  M82: '1G (Group G winner)',
+  M85: '1B (Group B winner)',
+  M87: '1K (Group K winner)',
+};
+
+let selected = new Set();
+
+// Build picker
+const picker = document.getElementById('group-picker');
+GROUPS.forEach(g => {
+  const el = document.createElement('div');
+  el.className = 'group-check';
+  el.id = 'gc-' + g;
+  el.innerHTML = `<b>Group ${g}</b>`;
+  el.onclick = () => toggleGroup(g);
+  picker.appendChild(el);
+});
+
+function toggleGroup(g) {
+  if (selected.has(g)) { selected.delete(g); }
+  else if (selected.size < 8) { selected.add(g); }
+  else { alert('Already 8 selected. Remove one first.'); return; }
+  render();
+}
+
+function presetAll() { selected = new Set(['A','B','C','D','E','F','G','H']); render(); }
+function presetKL()  { selected = new Set(['E','G','I','J','K','L','A','B']); render(); }
+function clearAll()  { selected.clear(); render(); }
+
+function render() {
+  GROUPS.forEach(g => {
+    document.getElementById('gc-'+g).className = 'group-check' + (selected.has(g) ? ' on' : '');
+  });
+  document.getElementById('pick-count').textContent = selected.size + ' / 8 selected';
+  if (selected.size === 8) runAssignment();
+  else document.getElementById('assignment-output').style.display = 'none';
+}
+
+function runAssignment() {
+  const qualified = new Set(selected);
+  const traceLines = [];
+
+  // Build candidates per slot
+  const candidates = {};
+  Object.entries(THIRD_SLOTS).forEach(([mid, groups]) => {
+    candidates[mid] = groups.filter(g => qualified.has(g));
+  });
+
+  traceLines.push(`<div class="step">Qualified 3rd groups: <b>${[...qualified].sort().join(', ')}</b></div>`);
+  traceLines.push(`<div class="step">Filtering each slot's eligible groups to only qualified ones...</div>`);
+  Object.entries(candidates).forEach(([mid, gs]) => {
+    traceLines.push(`<div class="step">${mid}: eligible & qualified = [${gs.join(', ')}]</div>`);
+  });
+
+  const assignment = {};
+  const used = new Set();
+  const howDecided = {};
+
+  // Phase 1: constraint propagation
+  let changed = true;
+  let passNum = 0;
+  while (changed) {
+    changed = false;
+    passNum++;
+    Object.entries(candidates).forEach(([mid, grps]) => {
+      if (assignment[mid]) return;
+      const avail = grps.filter(g => !used.has(g));
+      if (avail.length === 1) {
+        assignment[mid] = avail[0];
+        howDecided[mid] = 'forced';
+        used.add(avail[0]);
+        changed = true;
+        traceLines.push(`<div class="step">Pass ${passNum}: <b>${mid}</b> → only option left = <b>Group ${avail[0]}</b> <span class="tag-forced">FORCED</span></div>`);
+      }
+    });
+  }
+
+  // Phase 2: remaining slots
+  Object.entries(candidates).forEach(([mid, grps]) => {
+    if (assignment[mid]) return;
+    const avail = grps.filter(g => !used.has(g));
+    if (!avail.length) {
+      traceLines.push(`<div class="step" style="color:#f87171"><b>${mid}</b>: no eligible groups left! (conflict)</div>`);
+      return;
+    }
+    // pick first alphabetically as fallback (or by points in real app)
+    avail.sort((a,b) => a.localeCompare(b));
+    assignment[mid] = avail[0];
+    howDecided[mid] = 'tiebreak';
+    used.add(avail[0]);
+    traceLines.push(`<div class="step"><b>${mid}</b>: multiple options [${avail.join(', ')}] → picked <b>Group ${avail[0]}</b> <span class="tag-points">TIEBREAK</span></div>`);
+  });
+
+  // Render result table
+  const tbody = document.getElementById('result-table');
+  tbody.innerHTML = '';
+  Object.entries(THIRD_SLOTS).forEach(([mid, _]) => {
+    const grp = assignment[mid];
+    const how = howDecided[mid];
+    const badge = how === 'forced'
+      ? '<span class="tag-forced">FORCED — only option</span>'
+      : '<span class="tag-points">TIEBREAK — highest pts</span>';
+    tbody.innerHTML += `<tr>
+      <td>${mid}</td>
+      <td>${MATCH_VS[mid]}</td>
+      <td><span class="chip ${grp ? 'assigned' : ''}">${grp ? 'Group ' + grp : '⚠️ unresolved'}</span></td>
+      <td>${badge}</td>
+    </tr>`;
+  });
+
+  document.getElementById('trace').innerHTML = traceLines.join('');
+  document.getElementById('assignment-output').style.display = '';
+}
+
+// default on load
+presetAll();
+</script>
+</body>
+</html>

@@ -1,0 +1,52 @@
+{
+  "title": "FIFA WC 2026 — 3rd Place Slot Assignment Logic",
+  "summary": "8 of the 12 groups' 3rd-place teams advance to the Round of 32. Each of the 8 R32 slots has a pre-set list of eligible groups (from official FIFA bracket). A group can appear in multiple slot lists, so we use constraint propagation to assign each group to exactly ONE slot.",
+
+  "official_slots": {
+    "M74": { "match": "1E vs 3rd", "eligible_groups": ["A","B","C","D","F"] },
+    "M77": { "match": "1I vs 3rd", "eligible_groups": ["C","D","F","G","H"] },
+    "M79": { "match": "1A vs 3rd", "eligible_groups": ["C","E","F","H","I"] },
+    "M80": { "match": "1L vs 3rd", "eligible_groups": ["E","H","I","J","K"] },
+    "M81": { "match": "1D vs 3rd", "eligible_groups": ["B","E","F","I","J"] },
+    "M82": { "match": "1G vs 3rd", "eligible_groups": ["A","E","H","I","J"] },
+    "M85": { "match": "1B vs 3rd", "eligible_groups": ["E","F","G","I","J"] },
+    "M87": { "match": "1K vs 3rd", "eligible_groups": ["D","E","I","J","L"] }
+  },
+
+  "group_appearances": {
+    "A": ["M74","M82"],
+    "B": ["M74","M81"],
+    "C": ["M74","M77","M79"],
+    "D": ["M74","M77","M87"],
+    "E": ["M79","M80","M81","M82","M85","M87"],
+    "F": ["M74","M77","M79","M81","M85"],
+    "G": ["M77","M85"],
+    "H": ["M77","M79","M80","M82"],
+    "I": ["M79","M80","M81","M82","M85","M87"],
+    "J": ["M80","M81","M82","M85","M87"],
+    "K": ["M80"],
+    "L": ["M87"]
+  },
+
+  "why_repeats_happen": "Group E appears in 6 slots, Group I in 6 slots. If we independently pick the best 3rd-place team per slot, the same team gets assigned to all 6 slots. This is wrong — each team can only play in ONE match.",
+
+  "constraint_propagation_algorithm": {
+    "step_1": "Find slots that have exactly 1 eligible group among the player's 8 picks. Assign immediately. Example: if K is picked → K must go to M80 (only option).",
+    "step_2": "Mark that group as 'used'. Remove it from all other slots' candidate lists.",
+    "step_3": "Repeat step 1-2 until no more forced assignments exist.",
+    "step_4": "For remaining ambiguous slots (multiple candidates), assign the group with the highest 3rd-place points.",
+    "result": "Every group is assigned to exactly ONE slot. No repeats."
+  },
+
+  "example": {
+    "player_picks_8_groups": ["A","B","D","E","G","I","K","L"],
+    "forced_assignments": {
+      "K": "M80 (K only appears in M80)",
+      "L": "M87 (L only appears in M87)",
+      "G": "M77 or M85 (only 2 options — after M87 taken, if D not picked, M77 is free)"
+    },
+    "note": "After K→M80 and L→M87, remove M80 and M87 from remaining candidates. Then propagate again to find next forced assignment."
+  },
+
+  "groups_never_conflict_in_real_tournament": "FIFA's slot design guarantees that for ANY valid set of 8 qualifying groups, each slot gets exactly one team. The constraint propagation finds that assignment. Tiebreaker (most points) is only needed if FIFA's real table is ambiguous for predicted picks."
+}
