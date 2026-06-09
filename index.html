@@ -550,7 +550,7 @@ async function boot() {
       // Verify account still exists (may have been removed by admin)
       const playerSnap = await getDoc(doc(db,'players',saved.phone));
       if (playerSnap.exists()) {
-        S.me = saved;
+        S.me = {...saved, paid: !!playerSnap.data().paid};
         await loadMyPicks();
         showView('view-predict');
         renderPredict();
@@ -611,7 +611,8 @@ async function loadMyPicks() {
 
 /* ── Predict view ───────────────────────────────────────────── */
 function renderPredict() {
-  $("predict-who").textContent = S.me?.name || "";
+  const paid = S.me?.paid;
+  $("predict-who").innerHTML = `${esc(S.me?.name||'')}${paid ? ' <span class="premium-badge">⭐ Premium</span>' : ''}`;
   $("my-pts").textContent = computeMyScore();
   renderStatus();
   renderPredictTab();
@@ -1127,8 +1128,9 @@ async function showLeaderboard() {
       getDocs(collection(db,'predictions')),
       getDocs(collection(db,'players'))
     ]);
-    const paidPhones = new Set();
-    playersSnap.forEach(d => { if (d.data().paid) paidPhones.add(d.id); });
+    // Build predictions lookup keyed by doc ID
+    const predsByPhone = {};
+    predsSnap.forEach(s => { predsByPhone[s.id] = s.data(); });
 
     // Precompute official 3rd-place qualifying teams for team-based scoring
     const lbThirdStandings = S.koThirdQualifiers.length ? computeGroupStandings({}) : null;
@@ -1136,10 +1138,19 @@ async function showLeaderboard() {
       ? new Set(S.koThirdQualifiers.map(g => lbThirdStandings[g]?.[2]?.team).filter(Boolean))
       : new Set();
 
+    // Start from paid players — all paid players appear even with 0 pts
     const rows = [];
-    predsSnap.forEach(s=>{
-      const {name,phone,picks={},third_picks=[]}=s.data();
-      if (!paidPhones.has(phone)) return;   // skip unpaid
+    playersSnap.forEach(d => {
+      if (!d.data().paid) return;
+      const phone = d.id;
+      const playerDoc = d.data();
+      const name = playerDoc.name || phone;
+      // find their predictions doc — try doc ID match first, then phone field match
+      const predData = predsByPhone[phone]
+        || Object.values(predsByPhone).find(p => p.phone === phone)
+        || {};
+      const picks = predData.picks || {};
+      const third_picks = predData.third_picks || [];
       let pts=0,correct=0,predicted=0;
       // Migrate picks and build clean playerPicks map
       const playerPicks = {};
@@ -1154,7 +1165,7 @@ async function showLeaderboard() {
         predicted++;
         if(pick===r){correct++;pts+=(r==='Draw'?DRAW_POINTS:WIN_POINTS);}
       });
-      // KO scoring: matchup pts (0/3/6) + winner pts (0/3)
+      // KO scoring
       BRACKET.forEach(match=>{
         if (!S.koResults[match.id]) return;
         predicted++;
@@ -1169,7 +1180,7 @@ async function showLeaderboard() {
           if (pickedTeam && lbOfficialThirdTeams.has(pickedTeam)) { correct++; pts += THIRD_POINTS; }
         });
       }
-      rows.push({name,phone,pts,correct,predicted});
+      rows.push({name, phone, pts, correct, predicted});
     });
     rows.sort((a,b)=>b.pts-a.pts||a.name.localeCompare(b.name));
     if(!rows.length){$("lb-body").innerHTML=`<div class="empty">No paid entries yet.</div>`;return;}
@@ -1179,7 +1190,7 @@ async function showLeaderboard() {
       const mine=p.phone===mePhone?" me":"";
       return `<div class="lrow${mine}">
         <div class="rank ${rc}">${rank}</div>
-        <div class="lname">${esc(p.name)}<small>${p.correct}/${p.predicted} correct</small></div>
+        <div class="lname">${esc(p.name)} <span class="premium-badge">⭐ Premium</span><small>${p.correct}/${p.predicted} correct</small></div>
         <div class="lpts">${p.pts}<small>pts</small></div>
       </div>`;
     }).join("")}</div>`;
@@ -1350,6 +1361,9 @@ input:focus{border-color:var(--blue-l);box-shadow:0 0 0 3px rgba(42,57,141,.25)}
 .rank{font-family:'Anton';font-size:20px;color:var(--muted);text-align:center}
 .rank.g1{color:var(--amber)}.rank.g2{color:#d9e6dd}.rank.g3{color:#c98a4b}
 .lname{font-weight:700}.lname small{display:block;color:var(--muted);font-weight:500;font-size:11px}
+.premium-badge{display:inline-block;font-size:10px;font-weight:700;letter-spacing:.06em;
+  background:linear-gradient(135deg,#ffd700,#ffa500);color:#2a1a00;
+  padding:2px 7px;border-radius:20px;vertical-align:middle;margin-left:5px;text-transform:uppercase}
 .lpts{font-family:'Anton';font-size:22px;color:var(--grass)}
 .lpts small{font:600 9px 'Sora';color:var(--muted);letter-spacing:.14em;display:block;text-transform:uppercase}
 .empty{padding:34px 18px;text-align:center;color:var(--muted);font-size:13.5px;line-height:1.6}

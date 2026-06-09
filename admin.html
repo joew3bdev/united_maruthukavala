@@ -786,13 +786,20 @@ async function refreshLeaderboard() {
       getDocs(collection(db,'predictions')),
       getDocs(collection(db,'players'))
     ]);
-    const paidPhones = new Set();
-    playersSnap.forEach(d => { if (d.data().paid) paidPhones.add(d.id); });
+    // Build predictions lookup keyed by doc ID
+    const predsByPhone = {};
+    predsSnap.forEach(s => { predsByPhone[s.id] = s.data(); });
 
+    // Start from paid players — all paid players appear even with 0 pts
     const rows = [];
-    predsSnap.forEach(s => {
-      const {name, phone, picks={}} = s.data();
-      if (!paidPhones.has(phone)) return;
+    playersSnap.forEach(d => {
+      if (!d.data().paid) return;
+      const phone = d.id;
+      const name = d.data().name || phone;
+      const predData = predsByPhone[phone]
+        || Object.values(predsByPhone).find(p => p.phone === phone)
+        || {};
+      const picks = predData.picks || {};
       let pts=0, correct=0, predicted=0;
       Object.entries(picks).forEach(([id, rawPick]) => {
         const pick = adminMigratePick(id, rawPick);
