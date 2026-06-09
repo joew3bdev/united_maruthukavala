@@ -685,8 +685,7 @@ function renderGroupMatches() {
   const savedPicks    = FIXTURES.filter(f => allPicks[f.id]).length;
   const allDone       = savedPicks >= totalFixtures;
   html += `<div class="ko-next-wrap">
-    <button class="btn ghost" onclick="quickFillGroupPicks()" style="font-size:12px;margin-bottom:8px;opacity:.6">⚡ Quick-fill (test)</button><br>
-    ${!allDone
+${!allDone
       ? `<div style="font-size:12px;color:var(--muted);margin-bottom:8px">${savedPicks}/${totalFixtures} group picks saved — fill all to unlock Knockout</div>
          <button class="btn" disabled style="opacity:.4;cursor:not-allowed">Knockout Stage &nbsp;→</button>`
       : `<button class="btn" onclick="switchPredictTab('knockout')">Knockout Stage &nbsp;→</button>`
