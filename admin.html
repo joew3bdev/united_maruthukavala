@@ -689,12 +689,12 @@ async function renderPlayers() {
         </td>
       </tr>`;
     });
-
+    debugger
     $("section-players").innerHTML = `
       <div class="players-summary">
         <span>${total} joined</span>
         <span class="paid-count">💰 ${paid} paid</span>
-        <span>✅ ${players.filter(p => p.pickCount === 104).length} completed</span>
+        <span>✅ ${players.filter(p => predMap[p.phone]?.pickCount === 104).length} completed</span>
         <button class="res-btn" onclick="renderPlayers()" style="margin-left:auto">↻ Refresh</button>
       </div>
       <div class="card" style="overflow-x:auto;padding:0">
