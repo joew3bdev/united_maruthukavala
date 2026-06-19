@@ -35,76 +35,76 @@ const db  = getFirestore(app);
 
 /* ── Fixtures ────────────────────────────────────────────────── */
 const FIXTURES = [
-  {id:'A1',group:'A',home:'Mexico',       away:'South Africa',  kickoff:'2026-06-11T21:00:00Z'},
-  {id:'A2',group:'A',home:'South Korea',  away:'Czech Republic',kickoff:'2026-06-12T01:00:00Z'},
-  {id:'A3',group:'A',home:'Mexico',       away:'Czech Republic',kickoff:'2026-06-15T21:00:00Z'},
-  {id:'A4',group:'A',home:'South Africa', away:'South Korea',   kickoff:'2026-06-16T01:00:00Z'},
-  {id:'A5',group:'A',home:'Mexico',       away:'South Korea',   kickoff:'2026-06-19T21:00:00Z'},
-  {id:'A6',group:'A',home:'Czech Republic',away:'South Africa', kickoff:'2026-06-19T21:00:00Z'},
-  {id:'B1',group:'B',home:'Canada',       away:'Bosnia & Herzegovina',kickoff:'2026-06-12T17:00:00Z'},
-  {id:'B2',group:'B',home:'Qatar',        away:'Switzerland',   kickoff:'2026-06-12T21:00:00Z'},
-  {id:'B3',group:'B',home:'Canada',       away:'Switzerland',   kickoff:'2026-06-16T17:00:00Z'},
-  {id:'B4',group:'B',home:'Qatar',        away:'Bosnia & Herzegovina',kickoff:'2026-06-16T21:00:00Z'},
-  {id:'B5',group:'B',home:'Canada',       away:'Qatar',         kickoff:'2026-06-20T17:00:00Z'},
-  {id:'B6',group:'B',home:'Bosnia & Herzegovina',away:'Switzerland',kickoff:'2026-06-20T17:00:00Z'},
-  {id:'C1',group:'C',home:'Brazil',       away:'Morocco',       kickoff:'2026-06-13T01:00:00Z'},
-  {id:'C2',group:'C',home:'Haiti',        away:'Scotland',      kickoff:'2026-06-13T17:00:00Z'},
-  {id:'C3',group:'C',home:'Brazil',       away:'Scotland',      kickoff:'2026-06-17T01:00:00Z'},
-  {id:'C4',group:'C',home:'Morocco',      away:'Haiti',         kickoff:'2026-06-17T17:00:00Z'},
-  {id:'C5',group:'C',home:'Brazil',       away:'Haiti',         kickoff:'2026-06-21T01:00:00Z'},
-  {id:'C6',group:'C',home:'Scotland',     away:'Morocco',       kickoff:'2026-06-21T01:00:00Z'},
-  {id:'D1',group:'D',home:'USA',          away:'Paraguay',      kickoff:'2026-06-13T21:00:00Z'},
-  {id:'D2',group:'D',home:'Australia',    away:'Turkey',        kickoff:'2026-06-14T01:00:00Z'},
-  {id:'D3',group:'D',home:'USA',          away:'Turkey',        kickoff:'2026-06-17T21:00:00Z'},
-  {id:'D4',group:'D',home:'Paraguay',     away:'Australia',     kickoff:'2026-06-18T01:00:00Z'},
-  {id:'D5',group:'D',home:'USA',          away:'Australia',     kickoff:'2026-06-21T21:00:00Z'},
-  {id:'D6',group:'D',home:'Turkey',       away:'Paraguay',      kickoff:'2026-06-21T21:00:00Z'},
+  {id:'A1',group:'A',home:'Mexico',       away:'South Africa', kickoff:'2026-06-11T19:00:00Z'},
+  {id:'A2',group:'A',home:'South Korea',  away:'Czech Republic',kickoff:'2026-06-12T02:00:00Z'},
+  {id:'A3',group:'A',home:'Czech Republic',away:'South Africa',kickoff:'2026-06-18T16:00:00Z'},
+  {id:'A4',group:'A',home:'Mexico',       away:'South Korea',   kickoff:'2026-06-19T01:00:00Z'},
+  {id:'A5',group:'A',home:'Czech Republic',away:'Mexico',       kickoff:'2026-06-25T01:00:00Z'},
+  {id:'A6',group:'A',home:'South Africa', away:'South Korea',   kickoff:'2026-06-25T01:00:00Z'},
+  {id:'B1',group:'B',home:'Canada',       away:'Bosnia & Herzegovina',kickoff:'2026-06-12T19:00:00Z'},
+  {id:'B2',group:'B',home:'Qatar',        away:'Switzerland',   kickoff:'2026-06-13T19:00:00Z'},
+  {id:'B3',group:'B',home:'Switzerland',  away:'Bosnia & Herzegovina',kickoff:'2026-06-18T19:00:00Z'},
+  {id:'B4',group:'B',home:'Canada',       away:'Qatar',         kickoff:'2026-06-18T22:00:00Z'},
+  {id:'B5',group:'B',home:'Switzerland',  away:'Canada',        kickoff:'2026-06-24T19:00:00Z'},
+  {id:'B6',group:'B',home:'Bosnia & Herzegovina',away:'Qatar',  kickoff:'2026-06-24T19:00:00Z'},
+  {id:'C1',group:'C',home:'Brazil',       away:'Morocco',       kickoff:'2026-06-13T22:00:00Z'},
+  {id:'C2',group:'C',home:'Haiti',        away:'Scotland',      kickoff:'2026-06-14T01:00:00Z'},
+  {id:'C3',group:'C',home:'Scotland',     away:'Morocco',       kickoff:'2026-06-19T22:00:00Z'},
+  {id:'C4',group:'C',home:'Brazil',       away:'Haiti',         kickoff:'2026-06-20T00:30:00Z'},
+  {id:'C5',group:'C',home:'Scotland',     away:'Brazil',        kickoff:'2026-06-24T22:00:00Z'},
+  {id:'C6',group:'C',home:'Morocco',      away:'Haiti',         kickoff:'2026-06-24T22:00:00Z'},
+  {id:'D1',group:'D',home:'USA',          away:'Paraguay',      kickoff:'2026-06-13T01:00:00Z'},
+  {id:'D2',group:'D',home:'Australia',    away:'Turkey',        kickoff:'2026-06-13T04:00:00Z'},
+  {id:'D3',group:'D',home:'USA',          away:'Australia',     kickoff:'2026-06-19T19:00:00Z'},
+  {id:'D4',group:'D',home:'Turkey',       away:'Paraguay',      kickoff:'2026-06-20T03:00:00Z'},
+  {id:'D5',group:'D',home:'Turkey',       away:'USA',           kickoff:'2026-06-26T02:00:00Z'},
+  {id:'D6',group:'D',home:'Paraguay',     away:'Australia',     kickoff:'2026-06-26T02:00:00Z'},
   {id:'E1',group:'E',home:'Germany',      away:'Curaçao',       kickoff:'2026-06-14T17:00:00Z'},
-  {id:'E2',group:'E',home:'Ivory Coast',  away:'Ecuador',       kickoff:'2026-06-14T21:00:00Z'},
-  {id:'E3',group:'E',home:'Germany',      away:'Ecuador',       kickoff:'2026-06-18T17:00:00Z'},
-  {id:'E4',group:'E',home:'Ivory Coast',  away:'Curaçao',       kickoff:'2026-06-18T21:00:00Z'},
-  {id:'E5',group:'E',home:'Germany',      away:'Ivory Coast',   kickoff:'2026-06-22T17:00:00Z'},
-  {id:'E6',group:'E',home:'Ecuador',      away:'Curaçao',       kickoff:'2026-06-22T17:00:00Z'},
-  {id:'F1',group:'F',home:'Netherlands',  away:'Japan',         kickoff:'2026-06-14T21:00:00Z'},
-  {id:'F2',group:'F',home:'Sweden',       away:'Tunisia',       kickoff:'2026-06-15T01:00:00Z'},
-  {id:'F3',group:'F',home:'Netherlands',  away:'Tunisia',       kickoff:'2026-06-18T21:00:00Z'},
-  {id:'F4',group:'F',home:'Japan',        away:'Sweden',        kickoff:'2026-06-19T01:00:00Z'},
-  {id:'F5',group:'F',home:'Netherlands',  away:'Sweden',        kickoff:'2026-06-22T21:00:00Z'},
-  {id:'F6',group:'F',home:'Tunisia',      away:'Japan',         kickoff:'2026-06-22T21:00:00Z'},
-  {id:'G1',group:'G',home:'Belgium',      away:'Egypt',         kickoff:'2026-06-15T17:00:00Z'},
-  {id:'G2',group:'G',home:'Iran',         away:'New Zealand',   kickoff:'2026-06-15T21:00:00Z'},
-  {id:'G3',group:'G',home:'Belgium',      away:'New Zealand',   kickoff:'2026-06-19T17:00:00Z'},
-  {id:'G4',group:'G',home:'Iran',         away:'Egypt',         kickoff:'2026-06-19T21:00:00Z'},
-  {id:'G5',group:'G',home:'Belgium',      away:'Iran',          kickoff:'2026-06-23T17:00:00Z'},
-  {id:'G6',group:'G',home:'New Zealand',  away:'Egypt',         kickoff:'2026-06-23T17:00:00Z'},
-  {id:'H1',group:'H',home:'Spain',        away:'Cape Verde',    kickoff:'2026-06-15T21:00:00Z'},
-  {id:'H2',group:'H',home:'Saudi Arabia', away:'Uruguay',       kickoff:'2026-06-16T01:00:00Z'},
-  {id:'H3',group:'H',home:'Spain',        away:'Uruguay',       kickoff:'2026-06-19T21:00:00Z'},
-  {id:'H4',group:'H',home:'Saudi Arabia', away:'Cape Verde',    kickoff:'2026-06-20T01:00:00Z'},
-  {id:'H5',group:'H',home:'Spain',        away:'Saudi Arabia',  kickoff:'2026-06-23T21:00:00Z'},
-  {id:'H6',group:'H',home:'Uruguay',      away:'Cape Verde',    kickoff:'2026-06-23T21:00:00Z'},
-  {id:'I1',group:'I',home:'France',       away:'Senegal',       kickoff:'2026-06-16T17:00:00Z'},
-  {id:'I2',group:'I',home:'Iraq',         away:'Norway',        kickoff:'2026-06-16T21:00:00Z'},
-  {id:'I3',group:'I',home:'France',       away:'Norway',        kickoff:'2026-06-20T17:00:00Z'},
-  {id:'I4',group:'I',home:'Iraq',         away:'Senegal',       kickoff:'2026-06-20T21:00:00Z'},
-  {id:'I5',group:'I',home:'France',       away:'Iraq',          kickoff:'2026-06-24T17:00:00Z'},
-  {id:'I6',group:'I',home:'Norway',       away:'Senegal',       kickoff:'2026-06-24T17:00:00Z'},
-  {id:'J1',group:'J',home:'Argentina',    away:'Algeria',       kickoff:'2026-06-16T21:00:00Z'},
-  {id:'J2',group:'J',home:'Austria',      away:'Jordan',        kickoff:'2026-06-17T01:00:00Z'},
-  {id:'J3',group:'J',home:'Argentina',    away:'Jordan',        kickoff:'2026-06-20T21:00:00Z'},
-  {id:'J4',group:'J',home:'Algeria',      away:'Austria',       kickoff:'2026-06-21T01:00:00Z'},
-  {id:'J5',group:'J',home:'Argentina',    away:'Austria',       kickoff:'2026-06-24T21:00:00Z'},
-  {id:'J6',group:'J',home:'Jordan',       away:'Algeria',       kickoff:'2026-06-24T21:00:00Z'},
+  {id:'E2',group:'E',home:'Ivory Coast',  away:'Ecuador',       kickoff:'2026-06-14T23:00:00Z'},
+  {id:'E3',group:'E',home:'Germany',      away:'Ivory Coast',   kickoff:'2026-06-20T20:00:00Z'},
+  {id:'E4',group:'E',home:'Ecuador',      away:'Curaçao',       kickoff:'2026-06-21T00:00:00Z'},
+  {id:'E5',group:'E',home:'Curaçao',      away:'Ivory Coast',   kickoff:'2026-06-25T20:00:00Z'},
+  {id:'E6',group:'E',home:'Ecuador',      away:'Germany',       kickoff:'2026-06-25T20:00:00Z'},
+  {id:'F1',group:'F',home:'Netherlands',  away:'Japan',         kickoff:'2026-06-14T20:00:00Z'},
+  {id:'F2',group:'F',home:'Sweden',       away:'Tunisia',       kickoff:'2026-06-15T02:00:00Z'},
+  {id:'F3',group:'F',home:'Netherlands',  away:'Sweden',        kickoff:'2026-06-20T17:00:00Z'},
+  {id:'F4',group:'F',home:'Tunisia',      away:'Japan',         kickoff:'2026-06-20T04:00:00Z'},
+  {id:'F5',group:'F',home:'Japan',        away:'Sweden',        kickoff:'2026-06-25T23:00:00Z'},
+  {id:'F6',group:'F',home:'Tunisia',      away:'Netherlands',   kickoff:'2026-06-25T23:00:00Z'},
+  {id:'G1',group:'G',home:'Belgium',      away:'Egypt',         kickoff:'2026-06-15T19:00:00Z'},
+  {id:'G2',group:'G',home:'Iran',         away:'New Zealand',   kickoff:'2026-06-16T01:00:00Z'},
+  {id:'G3',group:'G',home:'Belgium',      away:'Iran',          kickoff:'2026-06-21T19:00:00Z'},
+  {id:'G4',group:'G',home:'New Zealand',  away:'Egypt',         kickoff:'2026-06-22T01:00:00Z'},
+  {id:'G5',group:'G',home:'Egypt',        away:'Iran',          kickoff:'2026-06-27T03:00:00Z'},
+  {id:'G6',group:'G',home:'New Zealand',  away:'Belgium',       kickoff:'2026-06-27T03:00:00Z'},
+  {id:'H1',group:'H',home:'Spain',        away:'Cape Verde',    kickoff:'2026-06-15T16:00:00Z'},
+  {id:'H2',group:'H',home:'Saudi Arabia', away:'Uruguay',       kickoff:'2026-06-15T22:00:00Z'},
+  {id:'H3',group:'H',home:'Spain',        away:'Saudi Arabia',  kickoff:'2026-06-21T16:00:00Z'},
+  {id:'H4',group:'H',home:'Uruguay',      away:'Cape Verde',    kickoff:'2026-06-21T22:00:00Z'},
+  {id:'H5',group:'H',home:'Cape Verde',   away:'Saudi Arabia',  kickoff:'2026-06-27T00:00:00Z'},
+  {id:'H6',group:'H',home:'Uruguay',      away:'Spain',         kickoff:'2026-06-27T00:00:00Z'},
+  {id:'I1',group:'I',home:'France',       away:'Senegal',       kickoff:'2026-06-16T19:00:00Z'},
+  {id:'I2',group:'I',home:'Iraq',         away:'Norway',        kickoff:'2026-06-16T22:00:00Z'},
+  {id:'I3',group:'I',home:'France',       away:'Iraq',          kickoff:'2026-06-22T21:00:00Z'},
+  {id:'I4',group:'I',home:'Norway',       away:'Senegal',       kickoff:'2026-06-23T00:00:00Z'},
+  {id:'I5',group:'I',home:'Norway',       away:'France',        kickoff:'2026-06-26T19:00:00Z'},
+  {id:'I6',group:'I',home:'Senegal',      away:'Iraq',          kickoff:'2026-06-26T19:00:00Z'},
+  {id:'J1',group:'J',home:'Argentina',    away:'Algeria',       kickoff:'2026-06-17T01:00:00Z'},
+  {id:'J2',group:'J',home:'Austria',      away:'Jordan',        kickoff:'2026-06-16T04:00:00Z'},
+  {id:'J3',group:'J',home:'Argentina',    away:'Austria',       kickoff:'2026-06-22T17:00:00Z'},
+  {id:'J4',group:'J',home:'Jordan',       away:'Algeria',       kickoff:'2026-06-23T03:00:00Z'},
+  {id:'J5',group:'J',home:'Jordan',       away:'Argentina',     kickoff:'2026-06-28T02:00:00Z'},
+  {id:'J6',group:'J',home:'Algeria',      away:'Austria',       kickoff:'2026-06-28T02:00:00Z'},
   {id:'K1',group:'K',home:'Portugal',     away:'DR Congo',      kickoff:'2026-06-17T17:00:00Z'},
-  {id:'K2',group:'K',home:'Uzbekistan',   away:'Colombia',      kickoff:'2026-06-17T21:00:00Z'},
-  {id:'K3',group:'K',home:'Portugal',     away:'Colombia',      kickoff:'2026-06-21T17:00:00Z'},
-  {id:'K4',group:'K',home:'Uzbekistan',   away:'DR Congo',      kickoff:'2026-06-21T21:00:00Z'},
-  {id:'K5',group:'K',home:'Portugal',     away:'Uzbekistan',    kickoff:'2026-06-25T17:00:00Z'},
-  {id:'K6',group:'K',home:'Colombia',     away:'DR Congo',      kickoff:'2026-06-25T17:00:00Z'},
-  {id:'L1',group:'L',home:'England',      away:'Croatia',       kickoff:'2026-06-17T21:00:00Z'},
-  {id:'L2',group:'L',home:'Ghana',        away:'Panama',        kickoff:'2026-06-18T01:00:00Z'},
-  {id:'L3',group:'L',home:'England',      away:'Ghana',         kickoff:'2026-06-22T21:00:00Z'},
-  {id:'L4',group:'L',home:'Croatia',      away:'Panama',        kickoff:'2026-06-23T01:00:00Z'},
+  {id:'K2',group:'K',home:'Uzbekistan',   away:'Colombia',      kickoff:'2026-06-18T02:00:00Z'},
+  {id:'K3',group:'K',home:'Portugal',     away:'Uzbekistan',    kickoff:'2026-06-23T17:00:00Z'},
+  {id:'K4',group:'K',home:'Colombia',     away:'DR Congo',      kickoff:'2026-06-24T02:00:00Z'},
+  {id:'K5',group:'K',home:'Colombia',     away:'Portugal',      kickoff:'2026-06-27T23:30:00Z'},
+  {id:'K6',group:'K',home:'DR Congo',     away:'Uzbekistan',    kickoff:'2026-06-27T23:30:00Z'},
+  {id:'L1',group:'L',home:'England',      away:'Croatia',       kickoff:'2026-06-17T20:00:00Z'},
+  {id:'L2',group:'L',home:'Ghana',        away:'Panama',        kickoff:'2026-06-17T23:00:00Z'},
+  {id:'L3',group:'L',home:'England',      away:'Ghana',         kickoff:'2026-06-23T20:00:00Z'},
+  {id:'L4',group:'L',home:'Panama',       away:'Croatia',       kickoff:'2026-06-23T23:00:00Z'},
   {id:'L5',group:'L',home:'Panama',       away:'England',       kickoff:'2026-06-27T21:00:00Z'},
   {id:'L6',group:'L',home:'Croatia',      away:'Ghana',         kickoff:'2026-06-27T21:00:00Z'}
 ];
@@ -790,12 +790,12 @@ async function refreshLeaderboard() {
     const predsByPhone = {};
     predsSnap.forEach(s => { predsByPhone[s.id] = s.data(); });
 
-    // Start from paid players — all paid players appear even with 0 pts
+    // All players appear on admin leaderboard (paid badge shown)
     const rows = [];
     playersSnap.forEach(d => {
-      if (!d.data().paid) return;
       const phone = d.id;
       const name = d.data().name || phone;
+      const isPaid = !!d.data().paid;
       const predData = predsByPhone[phone]
         || Object.values(predsByPhone).find(p => p.phone === phone)
         || {};
@@ -810,24 +810,26 @@ async function refreshLeaderboard() {
         const kr = S.koResults[id];
         if (kr && pick === kr) { correct++; pts += KO_POINTS; }
       });
-      rows.push({name, phone, pts, correct, predicted});
+      rows.push({name, phone, pts, correct, predicted, isPaid});
     });
 
     rows.sort((a,b) => b.pts - a.pts || b.correct - a.correct);
 
     if (!rows.length) {
-      el.innerHTML = `<div class="empty">No paid players yet.</div>`;
+      el.innerHTML = `<div class="empty">No players yet.</div>`;
       return;
     }
 
+    const paidCount = rows.filter(r => r.isPaid).length;
     const totalMatches = Object.keys(S.results).length + Object.keys(S.koResults).length;
-    let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">${totalMatches} result${totalMatches===1?'':'s'} entered · ${rows.length} paid player${rows.length===1?'':'s'}</div>`;
+    let html = `<div style="font-size:12px;color:var(--muted);margin-bottom:12px">${totalMatches} result${totalMatches===1?'':'s'} entered · ${rows.length} players (💰 ${paidCount} paid)</div>`;
     html += `<div class="lb-table-wrap"><table class="lb-table"><thead><tr><th>#</th><th>Player</th><th>Pts</th><th>✓</th></tr></thead><tbody>`;
     rows.forEach((r,i) => {
       const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
-      html += `<tr>
+      const paidBadge = r.isPaid ? `<span style="font-size:9px;font-weight:700;background:linear-gradient(135deg,#ffd700,#ffa500);color:#2a1a00;padding:1px 5px;border-radius:10px;margin-left:4px;vertical-align:middle">PAID</span>` : '';
+      html += `<tr${r.isPaid ? '' : ' style="opacity:.55"'}>
         <td style="color:var(--muted);width:28px">${medal||i+1}</td>
-        <td>${esc(r.name)}<br><span style="font-size:10px;color:var(--muted)">${esc(r.phone)}</span></td>
+        <td>${esc(r.name)}${paidBadge}<br><span style="font-size:10px;color:var(--muted)">${esc(r.phone)}</span></td>
         <td style="font-weight:700;color:var(--amber)">${r.pts}</td>
         <td style="font-size:12px;color:var(--muted)">${r.correct}/${r.predicted}</td>
       </tr>`;
