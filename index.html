@@ -285,7 +285,7 @@ window.copyRules = () => { navigator.clipboard?.writeText($("rules-text").textCo
 /* ── Group standings ────────────────────────────────────────── */
 // allPicks optional — if provided, uses player's group picks to fill in
 // any match where no official result has been entered yet.
-function computeGroupStandings(allPicks) {
+function computeGroupStandings(allPicks, playerOnly) {
   const standings = {};
   GROUP_ORDER.forEach(g => {
     standings[g] = {};
@@ -295,8 +295,9 @@ function computeGroupStandings(allPicks) {
     });
   });
   FIXTURES.forEach(f => {
-    // Official result takes priority; fall back to player's pick
-    let result = S.results[f.id];
+    // In playerOnly mode, use player's own picks (ignore actual results)
+    // Otherwise, official result takes priority; fall back to player's pick
+    let result = playerOnly ? null : S.results[f.id];
     if (!result && allPicks) result = migratePick(f.id, allPicks[f.id]);
     if (!result) return;
     const g = f.group;
@@ -451,20 +452,7 @@ function getKoTeams(matchId, allPicks, standings, thirdAssignment) {
   // R16, QF, SF, Final: player's predicted bracket uses ONLY their picks for propagation.
   // Official results (koResults) are NEVER used here — they are only used for scoring.
   // This keeps the player's bracket tree stable and independent of admin result entries.
-  const teams = match.feeds.map(feedId => {
-    const pick = allPicks[feedId];
-    if (!pick) return null;
-    // Validate: only propagate if the picked team is actually in the feeder match.
-    // If standings changed (e.g. real results moved teams between slots), a stale pick
-    // (e.g. "Netherlands" stored for a match now showing Japan vs Morocco) should NOT
-    // ghost-advance into later rounds — show TBD instead.
-    const feedTeams = getKoTeams(feedId, allPicks, standings, thirdAssignment);
-    if (feedTeams && !feedTeams.isSlot &&
-        pick !== feedTeams.home && pick !== feedTeams.away) {
-      return null; // stale pick — team is not in this match anymore
-    }
-    return pick;
-  });
+  const teams = match.feeds.map(feedId => allPicks[feedId] || null);
   return teams.some(t=>!t) ? null : {home:teams[0], away:teams[1]};
 }
 
@@ -499,7 +487,7 @@ function getPlayerPredictedMatchTeams(matchId, playerPicks) {
   if (!match) return null;
   if (match.round === 'R32') {
     // Derive from standings (same source as display), not koR32Teams admin override
-    const standings = computeGroupStandings(playerPicks);
+    const standings = computeGroupStandings(playerPicks, true);
     const qualifiedThirds = S.koThirdQualifiers.length ? S.koThirdQualifiers
       : Object.keys(playerPicks).filter(id => BRACKET.every(m => m.id !== id)); // rough fallback
     const thirdAssignment = buildThirdAssignment(qualifiedThirds, standings);
@@ -829,7 +817,8 @@ function renderKnockoutBracket() {
   const allPicks       = Object.assign({}, S.picks, S.changed);
   const locked         = isKoClosed();
   // Compute once — passed into getKoTeams for all 16 R32 matches
-  const standings      = computeGroupStandings(allPicks);
+  // playerOnly=true: bracket display uses the player's own group picks, not actual results
+  const standings      = computeGroupStandings(allPicks, true);
   const qualifiedThirds = S.koThirdQualifiers.length ? S.koThirdQualifiers : S.myThirdPicks;
   const thirdAssignment = buildThirdAssignment(qualifiedThirds, standings);
 
@@ -951,8 +940,13 @@ function renderKnockoutBracket() {
       }
       return `<button class="${cls}" disabled>${flag(team)} ${esc(team)}</button>`;
     };
+    // Detect stale pick: stored pick is not one of the actual teams in this slot
+    const stalePick = pick && pick !== teams.home && pick !== teams.away;
     let foot = '';
-    if (pick && result) {
+    if (stalePick) {
+      // Teams shifted due to real results — show warning with the stored pick
+      foot = `<div class="bk-result" style="color:var(--amber);font-size:11px">⚠ picked ${flag(pick)} ${esc(pick)}</div>`;
+    } else if (pick && result) {
       if (pick === result) foot = `<div class="bk-result" style="color:var(--grass)">✓ +${KO_WIN_PTS} pts</div>`;
       else                 foot = `<div class="bk-result" style="color:var(--red)">✗ wrong</div>`;
     }
@@ -1227,7 +1221,7 @@ window.viewPlayerPicks = function(phone) {
   const d = window.lbPlayerData?.[phone];
   if (!d) return;
 
-  const playerStandings = computeGroupStandings(d.picks);
+  const playerStandings = computeGroupStandings(d.picks, true);
   const thirdAssign     = buildThirdAssignment(d.third_picks || [], playerStandings);
 
   let html = '';
