@@ -322,6 +322,54 @@ function computeGroupStandings(allPicks, playerOnly) {
   return sorted;
 }
 
+/* ── Fix standings using KO picks as evidence of expected slot teams ──
+   If a player picked Netherlands for slot "1F vs 2C", they expected
+   Netherlands to be 1st in Group F. When group picks aren't saved
+   (empty defaults sort alphabetically), this corrects the standings
+   so the bracket display matches what the player intended.
+────────────────────────────────────────────────────────────────── */
+function fixStandingsFromKoPicks(standings, allPicks) {
+  // Build team→group lookup from fixtures
+  const teamGroup = {};
+  FIXTURES.forEach(f => {
+    if (f.group) {
+      teamGroup[normalizeName(f.home)] = f.group;
+      teamGroup[normalizeName(f.away)] = f.group;
+    }
+  });
+
+  BRACKET.forEach(match => {
+    if (match.round !== 'R32' || !match.slot1) return;
+    const pick = normalizeName(allPicks[match.id] || '');
+    if (!pick) return;
+
+    // Only handle simple "1X" / "2X" slots (skip 3rd-place slots)
+    const parseSlot = s => { const m = s && s.match(/^([12])([A-L])$/); return m ? {rank: parseInt(m[1])-1, group: m[2]} : null; };
+    const s1 = parseSlot(match.slot1);
+    const s2 = parseSlot(match.slot2);
+
+    const pickGroup = teamGroup[pick];
+    if (!pickGroup) return;
+
+    // Determine which slot this pick belongs to, and what rank it should be
+    let targetRank;
+    if (s1 && s1.group === pickGroup) targetRank = s1.rank;
+    else if (s2 && s2.group === pickGroup) targetRank = s2.rank;
+    else return; // pick not in either slot's group — can't infer
+
+    const grp = standings[pickGroup];
+    if (!grp) return;
+
+    const currentIdx = grp.findIndex(t => normalizeName(t.team) === pick);
+    if (currentIdx < 0 || currentIdx === targetRank) return; // not found or already correct
+
+    // Swap pick to the expected rank
+    [grp[currentIdx], grp[targetRank]] = [grp[targetRank], grp[currentIdx]];
+  });
+
+  return standings;
+}
+
 /* ── 3rd-place slot assignment (official FIFA WC 2026 bracket) ──
    Each of the 8 R32 matches with a 3rd-place slot lists the groups
    eligible to fill it. A group can appear in multiple slot lists, so
@@ -487,7 +535,7 @@ function getPlayerPredictedMatchTeams(matchId, playerPicks) {
   if (!match) return null;
   if (match.round === 'R32') {
     // Derive from standings (same source as display), not koR32Teams admin override
-    const standings = computeGroupStandings(playerPicks, true);
+    const standings = fixStandingsFromKoPicks(computeGroupStandings(playerPicks, true), playerPicks);
     const qualifiedThirds = S.koThirdQualifiers.length ? S.koThirdQualifiers
       : Object.keys(playerPicks).filter(id => BRACKET.every(m => m.id !== id)); // rough fallback
     const thirdAssignment = buildThirdAssignment(qualifiedThirds, standings);
@@ -818,7 +866,8 @@ function renderKnockoutBracket() {
   const locked         = isKoClosed();
   // Compute once — passed into getKoTeams for all 16 R32 matches
   // playerOnly=true: bracket display uses the player's own group picks, not actual results
-  const standings      = computeGroupStandings(allPicks, true);
+  // fixStandingsFromKoPicks: corrects any slot mismatches using KO picks as evidence
+  const standings      = fixStandingsFromKoPicks(computeGroupStandings(allPicks, true), allPicks);
   const qualifiedThirds = S.koThirdQualifiers.length ? S.koThirdQualifiers : S.myThirdPicks;
   const thirdAssignment = buildThirdAssignment(qualifiedThirds, standings);
 
@@ -940,13 +989,8 @@ function renderKnockoutBracket() {
       }
       return `<button class="${cls}" disabled>${flag(team)} ${esc(team)}</button>`;
     };
-    // Detect stale pick: stored pick is not one of the actual teams in this slot
-    const stalePick = pick && pick !== teams.home && pick !== teams.away;
     let foot = '';
-    if (stalePick) {
-      // Teams shifted due to real results — show warning with the stored pick
-      foot = `<div class="bk-result" style="color:var(--amber);font-size:11px">⚠ picked ${flag(pick)} ${esc(pick)}</div>`;
-    } else if (pick && result) {
+    if (pick && result) {
       if (pick === result) foot = `<div class="bk-result" style="color:var(--grass)">✓ +${KO_WIN_PTS} pts</div>`;
       else                 foot = `<div class="bk-result" style="color:var(--red)">✗ wrong</div>`;
     }
@@ -1221,7 +1265,7 @@ window.viewPlayerPicks = function(phone) {
   const d = window.lbPlayerData?.[phone];
   if (!d) return;
 
-  const playerStandings = computeGroupStandings(d.picks, true);
+  const playerStandings = fixStandingsFromKoPicks(computeGroupStandings(d.picks, true), d.picks);
   const thirdAssign     = buildThirdAssignment(d.third_picks || [], playerStandings);
 
   let html = '';
@@ -1279,13 +1323,12 @@ window.viewPlayerPicks = function(phone) {
       const teams = getKoTeams(id, d.picks, playerStandings, thirdAssign);
       let matchLabel = id;
       if (teams && !teams.isSlot) {
-        // Only use resolved team names if the pick actually matches (avoids standings mismatch)
         if (!pick || pick === teams.home || pick === teams.away) {
           matchLabel = `${flag(teams.home)} ${esc(teams.home)} v ${flag(teams.away)} ${esc(teams.away)}`;
         } else {
-          // Fallback: show slot labels from BRACKET definition
-          const bm = BRACKET.find(m => m.id === id);
-          matchLabel = bm ? (bm.slot1 ? `${bm.slot1} v ${bm.slot2}` : id) : id;
+          // Pick doesn't match resolved teams — show pick vs opponent slot team
+          const opponent = teams.away;
+          matchLabel = `${flag(pick)} ${esc(pick)} v ${flag(opponent)} ${esc(opponent)}`;
         }
       }
       html += `<div class="pm-match">
