@@ -451,7 +451,20 @@ function getKoTeams(matchId, allPicks, standings, thirdAssignment) {
   // R16, QF, SF, Final: player's predicted bracket uses ONLY their picks for propagation.
   // Official results (koResults) are NEVER used here — they are only used for scoring.
   // This keeps the player's bracket tree stable and independent of admin result entries.
-  const teams = match.feeds.map(feedId => allPicks[feedId] || null);
+  const teams = match.feeds.map(feedId => {
+    const pick = allPicks[feedId];
+    if (!pick) return null;
+    // Validate: only propagate if the picked team is actually in the feeder match.
+    // If standings changed (e.g. real results moved teams between slots), a stale pick
+    // (e.g. "Netherlands" stored for a match now showing Japan vs Morocco) should NOT
+    // ghost-advance into later rounds — show TBD instead.
+    const feedTeams = getKoTeams(feedId, allPicks, standings, thirdAssignment);
+    if (feedTeams && !feedTeams.isSlot &&
+        pick !== feedTeams.home && pick !== feedTeams.away) {
+      return null; // stale pick — team is not in this match anymore
+    }
+    return pick;
+  });
   return teams.some(t=>!t) ? null : {home:teams[0], away:teams[1]};
 }
 
@@ -1139,6 +1152,7 @@ async function showLeaderboard() {
       : new Set();
 
     // Start from paid players — all paid players appear even with 0 pts
+    window.lbPlayerData = {};
     const rows = [];
     playersSnap.forEach(d => {
       if (!d.data().paid) return;
@@ -1180,15 +1194,20 @@ async function showLeaderboard() {
           if (pickedTeam && lbOfficialThirdTeams.has(pickedTeam)) { correct++; pts += THIRD_POINTS; }
         });
       }
+      window.lbPlayerData[phone] = { name, picks: playerPicks, third_picks };
       rows.push({name, phone, pts, correct, predicted});
     });
     rows.sort((a,b)=>b.pts-a.pts||a.name.localeCompare(b.name));
     if(!rows.length){$("lb-body").innerHTML=`<div class="empty">No paid entries yet.</div>`;return;}
     const mePhone=S.me?.phone;
-    $("lb-body").innerHTML=`<div class="card lb">${rows.map((p,i)=>{
+    const canView = false; // TODO: implement permission check for viewing other players' predictions
+    $("lb-body").innerHTML=`<div class="card lb">
+      ${canView ? `<div style="font-size:11px;color:var(--muted);text-align:center;padding:6px 0 10px;letter-spacing:.05em">Tap a player to see their predictions</div>` : ''}
+      ${rows.map((p,i)=>{
       const rank=i+1,rc=rank===1?"g1":rank===2?"g2":rank===3?"g3":"";
       const mine=p.phone===mePhone?" me":"";
-      return `<div class="lrow${mine}">
+      const clickAttr = canView ? ` class="lrow${mine} clickable" onclick="viewPlayerPicks('${p.phone}')"` : ` class="lrow${mine}"`;
+      return `<div${clickAttr}>
         <div class="rank ${rc}">${rank}</div>
         <div class="lname">${esc(p.name)} <span class="premium-badge">⭐ Premium</span><small>${p.correct}/${p.predicted} correct</small></div>
         <div class="lpts">${p.pts}<small>pts</small></div>
@@ -1198,6 +1217,97 @@ async function showLeaderboard() {
 }
 window.showLeaderboard=showLeaderboard;
 window.goBack = function() { showView('view-predict'); renderPredict(); };
+
+window.closePlayerModal = function() {
+  $('player-modal').classList.add('hidden');
+  document.body.style.overflow = '';
+};
+
+window.viewPlayerPicks = function(phone) {
+  const d = window.lbPlayerData?.[phone];
+  if (!d) return;
+
+  const playerStandings = computeGroupStandings(d.picks);
+  const thirdAssign     = buildThirdAssignment(d.third_picks || [], playerStandings);
+
+  let html = '';
+
+  /* ── Group Stage ── */
+  html += `<div class="pm-section"><div class="pm-section-title">⚽ Group Stage</div>`;
+  GROUP_ORDER.forEach(g => {
+    html += `<div class="pm-group-label">Group ${g}</div><div class="pm-matches">`;
+    FIXTURES.filter(f => f.group === g).forEach(f => {
+      const pick   = d.picks[f.id] || '';
+      const result = S.results[f.id] || '';
+      let cls = pick ? (result ? (pick===result?'pm-right':'pm-wrong') : 'pm-sel') : '';
+      let pickTxt = pick === 'Draw' ? '🤝 Draw'
+                  : pick === f.home ? `${flag(f.home)} ${esc(f.home)}`
+                  : pick === f.away ? `${flag(f.away)} ${esc(f.away)}`
+                  : '—';
+      html += `<div class="pm-match">
+        <span class="pm-teams">${flag(f.home)} ${esc(f.home)} v ${flag(f.away)} ${esc(f.away)}</span>
+        <span class="pm-pick ${cls}">${pickTxt}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  html += `</div>`;
+
+  /* ── 3rd-Place Qualifiers ── */
+  html += `<div class="pm-section"><div class="pm-section-title">🥉 3rd-Place Picks</div><div class="pm-thirds">`;
+  if (d.third_picks && d.third_picks.length) {
+    d.third_picks.forEach(g => {
+      const team = playerStandings[g]?.[2];
+      html += `<div class="pm-third-chip">${team ? flag(team.team)+' '+esc(team.team) : 'Group '+g}</div>`;
+    });
+  } else {
+    html += `<span style="color:var(--muted);font-size:12px">No picks saved</span>`;
+  }
+  html += `</div></div>`;
+
+  /* ── Knockout ── */
+  const koRounds = [
+    { label:'Round of 32', ids:['M74','M77','M73','M75','M83','M84','M81','M82','M76','M78','M79','M80','M86','M88','M85','M87'] },
+    { label:'Round of 16', ids:['M89','M90','M93','M94','M91','M92','M95','M96'] },
+    { label:'Quarter-Finals', ids:['M97','M98','M99','M100'] },
+    { label:'Semi-Finals', ids:['M101','M102'] },
+    { label:'🏆 Final', ids:['FINAL'] },
+    { label:'🥉 3rd Place', ids:['BRONZE'] },
+  ];
+  html += `<div class="pm-section"><div class="pm-section-title">🏟️ Knockout</div>`;
+  koRounds.forEach(round => {
+    html += `<div class="pm-group-label">${round.label}</div><div class="pm-matches">`;
+    round.ids.forEach(id => {
+      const pick   = d.picks[id] || '';
+      const result = S.koResults[id] || '';
+      let cls = pick ? (result ? (pick===result?'pm-right':'pm-wrong') : 'pm-sel') : '';
+      // Try to get match teams for context — only show if pick is one of the resolved teams
+      const teams = getKoTeams(id, d.picks, playerStandings, thirdAssign);
+      let matchLabel = id;
+      if (teams && !teams.isSlot) {
+        // Only use resolved team names if the pick actually matches (avoids standings mismatch)
+        if (!pick || pick === teams.home || pick === teams.away) {
+          matchLabel = `${flag(teams.home)} ${esc(teams.home)} v ${flag(teams.away)} ${esc(teams.away)}`;
+        } else {
+          // Fallback: show slot labels from BRACKET definition
+          const bm = BRACKET.find(m => m.id === id);
+          matchLabel = bm ? (bm.slot1 ? `${bm.slot1} v ${bm.slot2}` : id) : id;
+        }
+      }
+      html += `<div class="pm-match">
+        <span class="pm-teams">${matchLabel}</span>
+        <span class="pm-pick ${cls}">${pick ? flag(pick)+' '+esc(pick) : '—'}</span>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  html += `</div>`;
+
+  $('player-modal-title').textContent = d.name + "'s Predictions";
+  $('player-modal-body').innerHTML = html;
+  $('player-modal').classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+};
 
 
 /* ── Save bar refresh tick ──────────────────────────────────── */
@@ -1369,6 +1479,36 @@ input:focus{border-color:var(--blue-l);box-shadow:0 0 0 3px rgba(42,57,141,.25)}
 .empty{padding:34px 18px;text-align:center;color:var(--muted);font-size:13.5px;line-height:1.6}
 .empty .big{font-family:'Anton';font-size:30px;color:var(--amber);display:block;margin-top:6px}
 .lb-header{display:flex;align-items:center;justify-content:space-between;margin:18px 0 10px}
+.lrow.clickable{cursor:pointer;transition:background .15s}
+.lrow.clickable:hover{background:rgba(58,86,196,.18);border-radius:10px}
+
+/* Player picks modal */
+#player-modal{position:fixed;inset:0;z-index:999;display:flex;align-items:flex-end;justify-content:center}
+#player-modal.hidden{display:none}
+#player-modal-bg{position:absolute;inset:0;background:rgba(0,0,0,.72)}
+#player-modal-box{position:relative;z-index:1;background:var(--panel);border-radius:20px 20px 0 0;width:100%;max-width:600px;max-height:88vh;display:flex;flex-direction:column;overflow:hidden}
+#player-modal-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;border-bottom:1px solid var(--line);flex-shrink:0}
+#player-modal-title{font-family:'Anton';font-size:20px;font-weight:400}
+#player-modal-close{background:none;border:1px solid var(--line);color:var(--ink);border-radius:50%;width:32px;height:32px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+#player-modal-body{overflow-y:auto;padding:14px 16px 32px;-webkit-overflow-scrolling:touch}
+.pm-section{margin-bottom:18px}
+.pm-section-title{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.pm-group-label{font-size:11px;font-weight:700;color:var(--blue-l);letter-spacing:.08em;margin:10px 0 4px}
+.pm-matches{display:flex;flex-direction:column;gap:3px}
+.pm-match{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 8px;border-radius:7px;background:var(--panel2);font-size:12px}
+.pm-teams{color:var(--muted);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pm-pick{font-weight:700;font-size:12px;white-space:nowrap;color:var(--ink)}
+.pm-pick.pm-right{color:var(--grass)}
+.pm-pick.pm-wrong{color:var(--red)}
+.pm-pick.pm-sel{color:var(--amber)}
+.pm-thirds{display:flex;flex-wrap:wrap;gap:6px}
+.pm-third-chip{font-size:12px;font-weight:600;background:var(--panel2);border:1px solid var(--line);border-radius:20px;padding:4px 11px}
+.pm-ko-row{display:flex;align-items:center;justify-content:space-between;padding:5px 8px;border-radius:7px;background:var(--panel2);font-size:13px;margin-bottom:3px}
+.pm-ko-teams{color:var(--muted);font-size:11px;flex:1}
+.pm-ko-pick{font-weight:700}
+.pm-ko-pick.pm-right{color:var(--grass)}
+.pm-ko-pick.pm-wrong{color:var(--red)}
+.pm-ko-pick.pm-sel{color:var(--amber)}
 
 /* Third-place picker */
 .third-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}
@@ -1662,6 +1802,18 @@ service cloud.firestore {
       &nbsp;Join WhatsApp Group
     </a>
     <footer style="margin-top:24px">3 pts win · 3 pts draw · 4 pts knockout · Updates as results are entered<br><span class="copyright">© 2026 United Maruthukavala · Powered by Jomin George Paul</span></footer>
+  </div>
+</div>
+
+<!-- Player picks modal -->
+<div id="player-modal" class="hidden">
+  <div id="player-modal-bg" onclick="closePlayerModal()"></div>
+  <div id="player-modal-box">
+    <div id="player-modal-head">
+      <div id="player-modal-title"></div>
+      <button id="player-modal-close" onclick="closePlayerModal()">✕</button>
+    </div>
+    <div id="player-modal-body"></div>
   </div>
 </div>
 
