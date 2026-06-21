@@ -172,6 +172,7 @@ const S = {
   koR32Teams: {},
   koResults: {},
   koThirdQualifiers: [],   // 8 selected group letters e.g. ['A','C','E',...]
+  group3rdOverride: {},    // manual 3rd-place overrides keyed by group letter
   entriesClosed: false,
   koEntriesClosed: false,
   contestName: "MKRA WC '26",
@@ -313,7 +314,8 @@ async function writeSettingsDoc() {
     results:              {...S.results},
     ko_r32_teams:         {...S.koR32Teams},
     ko_results:           {...S.koResults},
-    ko_third_qualifiers:  [...S.koThirdQualifiers]
+    ko_third_qualifiers:  [...S.koThirdQualifiers],
+    group_3rd_override:   {...S.group3rdOverride}
   });
 }
 
@@ -331,6 +333,7 @@ async function boot() {
       S.koR32Teams          = d.ko_r32_teams         || {};
       S.koResults           = d.ko_results           || {};
       S.koThirdQualifiers   = d.ko_third_qualifiers  || [];
+      S.group3rdOverride    = d.group_3rd_override   || {};
 
       // ── One-time migration: old setDoc+merge stored flat dotted keys
       //    e.g. {"results.A1": "Mexico"} instead of {results: {A1: "Mexico"}}
@@ -456,15 +459,26 @@ function renderKnockoutAdmin() {
   stdHtml += `</div>`;
 
   // ── 3rd-place qualifier selector ─────────────────────────────
-  const thirds = GROUP_ORDER.map(g => ({
-    group: g,
-    team: standings[g]?.[2]?.team || '—',
-    pts:  standings[g]?.[2]?.pts  ?? 0,
-    w:    standings[g]?.[2]?.w    ?? 0,
-    d:    standings[g]?.[2]?.d    ?? 0,
-    l:    standings[g]?.[2]?.l    ?? 0,
-    played: standings[g]?.[2]?.played ?? 0,
-  }));
+  // Build group→teams map for override dropdown
+  const groupTeams = {};
+  FIXTURES.forEach(f => {
+    if (!f.group) return;
+    if (!groupTeams[f.group]) groupTeams[f.group] = new Set();
+    groupTeams[f.group].add(f.home);
+    groupTeams[f.group].add(f.away);
+  });
+
+  const thirds = GROUP_ORDER.map(g => {
+    const override = S.group3rdOverride?.[g];
+    let t;
+    if (override) {
+      t = (standings[g] || []).find(x => x.team === override)
+        || {team: override, pts:0, w:0, d:0, l:0, played:0};
+    } else {
+      t = standings[g]?.[2] || {team:'—', pts:0, w:0, d:0, l:0, played:0};
+    }
+    return { group: g, team: t.team, pts: t.pts??0, w: t.w??0, d: t.d??0, l: t.l??0, played: t.played??0, overridden: !!override };
+  });
   const sel = new Set(S.koThirdQualifiers);
   const tooMany = sel.size > 8;
 
@@ -473,15 +487,21 @@ function renderKnockoutAdmin() {
       <span>🥉 Select 8 Best Third-Place Teams</span>
       <span class="third-count ${sel.size===8?'ok':sel.size>8?'over':''}">${sel.size}/8 selected</span>
     </div>
-    <p style="font-size:11px;color:var(--muted);margin:0 0 12px">Tap each group's third-place team to include or exclude them from the knockout round.</p>
+    <p style="font-size:11px;color:var(--muted);margin:0 0 12px">Tap chip to include/exclude. Use dropdown to fix GD tiebreakers.</p>
     <div class="third-grid">`;
 
-  thirds.forEach(({group, team, pts, w, d, l, played}) => {
+  thirds.forEach(({group, team, pts, w, d, l, played, overridden}) => {
     const on = sel.has(group);
+    const allTeams = [...(groupTeams[group] || [])].sort();
+    const opts = allTeams.map(t => `<option value="${esc(t)}" ${t===team?'selected':''}>${esc(t)}</option>`).join('');
     thirdHtml += `<div class="third-chip ${on?'on':''} ${!played?'no-data':''}" onclick="toggleThird('${group}')">
-      <div class="third-chip-grp">Grp ${group}</div>
+      <div class="third-chip-grp">Grp ${group}${overridden?' ✏️':''}</div>
       <div class="third-chip-team">${flag(team)} ${esc(team)}</div>
       <div class="third-chip-pts">${played ? `${pts}pt · ${w}W ${d}D ${l}L` : 'No results'}</div>
+      <select class="third-override-sel" onclick="event.stopPropagation()" onchange="setThirdOverride('${group}',this.value)" style="margin-top:5px;font-size:10px;width:100%;background:var(--panel2);color:var(--ink);border:1px solid var(--line);border-radius:5px;padding:2px 4px">
+        <option value="">auto (${esc(standings[group]?.[2]?.team||'?')})</option>
+        ${opts}
+      </select>
     </div>`;
   });
 
@@ -577,6 +597,17 @@ function renderKnockoutAdmin() {
     ${higherHtml ? `<div class="settings-form"><h3>⚽ Higher Rounds — Enter Results</h3>${higherHtml}</div>` : ''}
   `;
 }
+
+window.setThirdOverride = async function(group, team) {
+  if (!S.group3rdOverride) S.group3rdOverride = {};
+  if (team) S.group3rdOverride[group] = team;
+  else delete S.group3rdOverride[group];
+  try {
+    await writeSettingsDoc();
+    toast(`Group ${group} 3rd place ${team ? 'set to '+team : 'reset to auto'} ✓`);
+  } catch(e) { toast("Save failed", true); console.error(e); }
+  renderKnockoutAdmin();
+};
 
 window.toggleThird = function(group) {
   const sel = new Set(S.koThirdQualifiers);
