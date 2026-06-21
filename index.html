@@ -1238,7 +1238,7 @@ async function showLeaderboard() {
     rows.sort((a,b)=>b.pts-a.pts||a.name.localeCompare(b.name));
     if(!rows.length){$("lb-body").innerHTML=`<div class="empty">No paid entries yet.</div>`;return;}
     const mePhone=S.me?.phone;
-    const canView = false; // TODO: implement permission check for viewing other players' predictions
+    const canView = S.entriesClosed; // TODO: implement permission check for viewing other players' predictions
     $("lb-body").innerHTML=`<div class="card lb">
       ${canView ? `<div style="font-size:11px;color:var(--muted);text-align:center;padding:6px 0 10px;letter-spacing:.05em">Tap a player to see their predictions</div>` : ''}
       ${rows.map((p,i)=>{
