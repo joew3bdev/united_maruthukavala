@@ -868,8 +868,9 @@ function renderKnockoutBracket() {
   // playerOnly=true: bracket display uses the player's own group picks, not actual results
   // fixStandingsFromKoPicks: corrects any slot mismatches using KO picks as evidence
   const standings      = fixStandingsFromKoPicks(computeGroupStandings(allPicks, true), allPicks);
-  const qualifiedThirds = S.koThirdQualifiers.length ? S.koThirdQualifiers : S.myThirdPicks;
-  const thirdAssignment = buildThirdAssignment(qualifiedThirds, standings);
+  // Always use player's own 3rd-place picks for bracket display (never admin's official qualifiers)
+  // Admin's koThirdQualifiers is used for SCORING only, not display
+  const thirdAssignment = buildThirdAssignment(S.myThirdPicks, standings);
 
   /* ── Section 1: 3rd-place team selector ── */
   const sel      = new Set(S.myThirdPicks);
